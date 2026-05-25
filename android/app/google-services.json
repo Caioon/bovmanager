@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "271303804122",
+    "project_id": "bovmanager",
+    "storage_bucket": "bovmanager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:271303804122:android:8bb1cc655e2cad0e4091e3",
+        "android_client_info": {
+          "package_name": "com.example.bov_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6Qa5yiqmEZ_KRZMfY0L3RRHEDBC8iS7s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
