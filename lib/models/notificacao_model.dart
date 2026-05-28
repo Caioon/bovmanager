@@ -1,3 +1,5 @@
+//Classe seria usada em caso de uso de Firebase Cloud Functions, pra ter notificações push.
+//Atualmente o app tem notificações locais, por isso o modelo não é usado.
 class NotificacaoModel {
   final String id;
   final String tarefaId;
