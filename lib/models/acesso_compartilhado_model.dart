@@ -1,3 +1,9 @@
+//admin (pode editar e compartilhar)
+//gerente (pode editar mas nao compartilhar)
+//visualizador (pode visualizar)
+
+//food for thought: e se o cara quiser fazer uma alteração e fizer cagada? como eu poderia desfazer? teria de ter um sistema de commits, nao?
+//sei la, algum tipo de persistencia igual no postgres
 class AcessoCompartilhadoModel {
   final String id;
   final String propriedadeId;
