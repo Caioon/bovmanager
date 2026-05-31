@@ -1,7 +1,7 @@
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/historico_animal_model.dart';
-import 'package:bov_manager/services/pasto_service.dart';
+import 'package:bov_manager/models/historico_tipo.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
 import 'package:bov_manager/viewmodels/historico_animal_viewmodel.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
@@ -76,26 +76,24 @@ class HistoricoAnimalScreen extends ConsumerWidget {
                   // na comparação de ganho de peso.
                   // A lista já vem ordenada por data desc (mais recente primeiro).
                   final pesagens = historico
-                      .where((h) => h.tipo == 'pesagem' || h.tipo == 'entrada')
+                      .where((h) =>
+                          h.tipo.categoria == HistoricoCategoria.pesagem ||
+                          h.tipo.categoria == HistoricoCategoria.entrada)
                       .toList();
 
                   final movimentacoes = historico
-                      .where(
-                        (h) => h.tipo == 'movimentacao' || h.tipo == 'entrada',
-                      )
+                      .where((h) =>
+                          h.tipo.categoria == HistoricoCategoria.movimentacao ||
+                          h.tipo.categoria == HistoricoCategoria.entrada)
                       .toList();
 
                   final outros = historico
-                      .where(
-                        (h) =>
-                            h.tipo != 'pesagem' &&
-                            h.tipo != 'movimentacao' &&
-                            h.tipo != 'entrada',
-                      )
+                      .where((h) =>
+                          h.tipo.categoria != HistoricoCategoria.pesagem &&
+                          h.tipo.categoria != HistoricoCategoria.movimentacao &&
+                          h.tipo.categoria != HistoricoCategoria.entrada)
                       .toList();
 
-                  // Carrega o mapa de pastos uma única vez para a seção de
-                  // movimentações — só executa se houver movimentações com IDs.
                   final propriedadeId =
                       ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
 
@@ -145,14 +143,12 @@ class _HistoricoBodyState extends ConsumerState<_HistoricoBody> {
     _pastoNomesFuture = _carregarNomesPastos();
   }
 
-  /// Busca os pastos da propriedade e retorna um mapa {pastoId → nome}.
-  /// Se não há movimentações ou a propriedade é inválida, retorna vazio.
   Future<Map<String, String>> _carregarNomesPastos() async {
     if (widget.movimentacoes.isEmpty || widget.propriedadeId.isEmpty) {
       return {};
     }
     try {
-      final pastos = await ref.read(pastosListaProvider.future);
+      final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
       return {for (final p in pastos) p.id: p.nome};
     } catch (_) {
       return {};
@@ -179,8 +175,6 @@ class _HistoricoBodyState extends ConsumerState<_HistoricoBody> {
             FutureBuilder<Map<String, String>>(
               future: _pastoNomesFuture,
               builder: (context, snapshot) {
-                // Usa o mapa quando disponível; enquanto carrega usa os IDs
-                // como fallback para não bloquear a UI.
                 final nomes = snapshot.data ?? {};
 
                 return Container(
@@ -249,10 +243,13 @@ class _PesoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lista vem desc: first = mais recente, last = mais antigo (entrada)
-    final pesoMaisRecente = pesagens.first.valor;
-    final pesoInicial = pesagens.last.valor;
-    final ganho = pesoMaisRecente - pesoInicial;
+    if (pesagens.isEmpty) {
+      return SizedBox.shrink();
+    }
+    final pesoMaisRecente = pesagens.first.novoPeso;
+    final pesoInicial = pesagens.last.novoPeso;
+
+    final ganho = pesoMaisRecente! - pesoInicial!;
     final ganhoStr = ganho >= 0
         ? '+${ganho.toStringAsFixed(0)}'
         : ganho.toStringAsFixed(0);
@@ -330,10 +327,10 @@ class _GraficoPeso extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lista vem desc; inverte para exibir cronologicamente (esq → dir)
-    // e limita a 6 pontos para não sobrecarregar o gráfico
     final pontos = pesagens.reversed.take(6).toList();
-    final maxPeso = pontos.map((p) => p.valor).reduce((a, b) => a > b ? a : b);
+    final maxPeso = pontos
+        .map((p) => p.novoPeso)
+        .reduce((a, b) => a! > b! ? a : b);
 
     return SizedBox(
       height: 80,
@@ -341,7 +338,7 @@ class _GraficoPeso extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: pontos.asMap().entries.map((entry) {
           final isLast = entry.key == pontos.length - 1;
-          final altura = maxPeso > 0 ? entry.value.valor / maxPeso : 0.0;
+          final altura = maxPeso! > 0 ? entry.value.novoPeso! / maxPeso : 0.0;
           final mes = DateFormat('MMM').format(entry.value.data);
 
           return Expanded(
@@ -400,11 +397,8 @@ class _MovimentacaoItem extends StatelessWidget {
   final HistoricoAnimalModel historico;
   final bool isFirst;
   final bool isLast;
-
-  /// Mapa {pastoId → nomePasto} — pode estar vazio enquanto carrega.
   final Map<String, String> pastoNomes;
 
-  /// Resolve o nome do pasto pelo id; usa o próprio id como fallback.
   String _nomePasto(String? id) {
     if (id == null) return '—';
     return pastoNomes[id] ?? id;
@@ -412,7 +406,7 @@ class _MovimentacaoItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isEntrada = historico.pastoOrigemId == null;
+    final isEntrada = historico.tipo == HistoricoTipo.entrada;
     final nomeOrigem = _nomePasto(historico.pastoOrigemId);
     final nomeDestino = _nomePasto(historico.pastoDestinoId);
     final data = DateFormat('dd MMM yyyy').format(historico.data);
@@ -520,7 +514,7 @@ class _EventoItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  historico.tipo,
+                  historico.tipo.label,
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 13,
@@ -541,7 +535,7 @@ class _EventoItem extends StatelessWidget {
             ),
           ),
           Text(
-            historico.valor.toStringAsFixed(1),
+            historico.novoPeso!.toStringAsFixed(1),
             style: const TextStyle(
               color: AppColors.text2,
               fontSize: 13,

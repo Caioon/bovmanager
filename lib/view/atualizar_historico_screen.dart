@@ -1,10 +1,50 @@
+//mudar rebanho (pastoId == rebanho.pastoid, rebanhoDestinoId = rebanho.id)
+//rebanhoOrigem -> antigoRebanhoId(not null), rebanhoDestino -> novoRebanhoId
+//pastoOrigem -> pastoAntigoId(not null), pastoDestino -> rebanho.pastoId
+//nome: Mudar rebanho
+
+//entrar em um rebanho (pastoId == rebanho.pastoid, rebanhoDestinoId = rebanho.id)
+//rebanhoOrigem -> null, rebanhoDestino -> novoRebanhoId
+//pastoOrigem -> pastoAntigoId, pastoDestino -> rebanho.pastoId
+//nome: Entrar rebanho
+
+//os dois parecem ser os mesmos, mas eu vou separa-los como movimentações diferentes pra exibir mensagens diferentes na ui
+
+//sair do rebanho e mudar de pasto
+//rebanhoOrigem -> antigoRebanhoId(not null), rebanhoDestino -> null
+//pastoOrigem -> pastoAntigoId, pastoDestino -> novoPastoId
+//nome: Sair Rebanho/mudar Pasto
+
+//sair do rebanho e ficar no mesmo pasto
+//rebanhoOrigem -> antigoRebanhoId(not null), rebanhoDestino -> null
+//pastoOrigem -> pastoAntigoId, pastoDestino -> antigoPastoDestinoId
+//nome: Sair rebanho/manter pasto
+
+//Caso externo: rebanho muda de pasto
+//Força o(s) animal(is) a mudar pro pastoId novo do rebanho.pastoId
+//rebanhoOrigem -> antigoRebanhoId(not null), rebanhoDestino -> antigoRebanhoDestino(not null)
+//pastoOrigem -> pastoAntigoId, pastoDestino -> rebanho.pastoId
+//nome: Mudar pasto com rebanho
+
+//nome: Mudar rebanho    //nome: Entrar rebanho
+//nome: Sair Rebanho/mudar Pasto
+//nome: Sair rebanho/manter pasto
+//nome: Mudar pasto com rebanho
+
+//     ? 'Entrar em novo rebanho'
+//     : 'Mudar rebanho',
+// tipo: 'Sair rebanho/Mudar pasto',
+// tipo: 'Pesagem',
+
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
+import 'package:bov_manager/models/historico_tipo.dart';
 import 'package:bov_manager/models/pasto_model.dart';
-import 'package:bov_manager/services/pasto_service.dart';
+import 'package:bov_manager/models/rebanho_model.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
+import 'package:bov_manager/viewmodels/historico_animal_viewmodel.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
-import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
+import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +52,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // MODAL DE SELEÇÃO — chamado pelo DetalhesAnimalScreen
 // =============================================================================
 
-void showAtualizarHistoricoModal(BuildContext context) {
+void showAtualizarHistoricoModal(BuildContext context, bool temRebanho) {
   showModalBottomSheet(
     context: context,
     backgroundColor: AppColors.card,
@@ -54,14 +94,26 @@ void showAtualizarHistoricoModal(BuildContext context) {
                 icon: Icons.monitor_weight_outlined,
                 titulo: 'Pesagem',
                 subtitulo: 'Registrar novo peso do animal',
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
+
+                  final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
+
+                  if (!context.mounted) return;
+
+                  if (pastos.length < 2) {
+                    showBovErrorSnackBar(
+                      context,
+                      'Cadastre ao menos 2 pastos para registrar uma movimentação.',
+                    );
+                    return;
+                  }
                   Navigator.of(context).push(
                     PageRouteBuilder(
-                      pageBuilder: (_, __, ___) =>
+                      pageBuilder: (_, _, _) =>
                           const _RegistrarPesagemScreen(),
                       transitionDuration: const Duration(milliseconds: 300),
-                      transitionsBuilder: (_, animation, __, child) {
+                      transitionsBuilder: (_, animation, _, child) {
                         return SlideTransition(
                           position:
                               Tween(
@@ -80,19 +132,73 @@ void showAtualizarHistoricoModal(BuildContext context) {
 
               const SizedBox(height: 10),
 
-              // ── Movimentação ─────────────────────────────────────────────
+              // ── Movimentação — entrar/mudar rebanho ──────────────────────
               _ModalOpcao(
                 icon: Icons.arrow_forward_rounded,
                 titulo: 'Movimentação',
-                subtitulo: 'Registrar troca de pasto',
+                subtitulo: temRebanho
+                    ? 'Mudar de rebanho'
+                    : 'Entrar em um novo rebanho',
                 onTap: () async {
-                  // Fecha o modal de seleção antes de qualquer I/O
+                  final rebanhos = await ref.read(rebanhoListaProvider.future);
+
+                  if (!context.mounted) return;
+
+                  final ultimoRegistro = ref
+                      .read(historicoAnimalListaProvider)
+                      .value!
+                      .firstWhere((registro) =>
+                          registro.tipo != HistoricoTipo.pesagem);
+
+                  final possuiOutroRebanho = rebanhos.any(
+                    (r) => r.id != ultimoRegistro.rebanhoDestinoId,
+                  );
+
+                  if (!possuiOutroRebanho) {
+                    showBovErrorSnackBar(
+                      context,
+                      'Cadastre ao menos 1 outro rebanho para registrar uma movimentação.',
+                    );
+                    return;
+                  }
+
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (_, _, _) =>
+                          _RegistrarMudancaRebanhoScreen(
+                            rebanhos: rebanhos,
+                            titulo: temRebanho
+                                ? 'Mudar de rebanho'
+                                : 'Entrar em um novo rebanho',
+                            temRebanho: temRebanho,
+                          ),
+                      transitionDuration: const Duration(milliseconds: 300),
+                      transitionsBuilder: (_, animation, _, child) {
+                        return SlideTransition(
+                          position:
+                              Tween(
+                                    begin: const Offset(1.0, 0.0),
+                                    end: Offset.zero,
+                                  )
+                                  .chain(CurveTween(curve: Curves.easeInOut))
+                                  .animate(animation),
+                          child: child,
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+
+              // ── Movimentação — sair rebanho e mudar pasto ────────────────
+              _ModalOpcao(
+                icon: Icons.arrow_forward_rounded,
+                titulo: 'Movimentação',
+                subtitulo: 'Sair do rebanho e mudar o pasto',
+                onTap: () async {
                   Navigator.of(ctx).pop();
 
-                  final propriedadeId =
-                      ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
-
-                  final pastos = await ref.read(pastosListaProvider.future);
+                  final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
 
                   if (!context.mounted) return;
 
@@ -106,10 +212,10 @@ void showAtualizarHistoricoModal(BuildContext context) {
 
                   Navigator.of(context).push(
                     PageRouteBuilder(
-                      pageBuilder: (_, __, ___) =>
-                          _RegistrarMovimentacaoScreen(pastos: pastos),
+                      pageBuilder: (_, _, _) =>
+                          _RegistrarMudancaPastoScreen(pastos: pastos),
                       transitionDuration: const Duration(milliseconds: 300),
-                      transitionsBuilder: (_, animation, __, child) {
+                      transitionsBuilder: (_, animation, _, child) {
                         return SlideTransition(
                           position:
                               Tween(
@@ -122,6 +228,40 @@ void showAtualizarHistoricoModal(BuildContext context) {
                         );
                       },
                     ),
+                  );
+                },
+              ),
+
+              // ── Movimentação — sair rebanho e ficar no pasto ─────────────
+              _ModalOpcao(
+                icon: Icons.arrow_forward_rounded,
+                titulo: 'Movimentação',
+                subtitulo: 'Sair do rebanho e ficar no pasto',
+                onTap: () async {
+                  showBovConfirmDialog(
+                    context: context,
+                    icon: Icons.exit_to_app_rounded,
+                    titulo: 'Sair do rebanho?',
+                    descricao:
+                        'O animal será removido do rebanho atual e permanecerá no mesmo pasto.',
+                    textoConfirmar: 'Confirmar',
+                    onConfirmar: () {
+                      final ultimoRegistro = ref
+                          .read(historicoAnimalListaProvider)
+                          .value!
+                          .firstWhere((registro) =>
+                              registro.tipo != HistoricoTipo.pesagem);
+                      ref
+                          .read(animaisViewModelProvider.notifier)
+                          .registrarHistoricoMovimento(
+                            tipo: HistoricoTipo.sairRebanhoManterPasto,
+                            pastoOrigemId: ultimoRegistro.pastoDestinoId,
+                            pastoDestinoId: ultimoRegistro.pastoDestinoId,
+                            data: DateTime.now(),
+                            rebanhoOrigemId: ultimoRegistro.rebanhoDestinoId,
+                            rebanhoDestinoId: null,
+                          );
+                    },
                   );
                 },
               ),
@@ -345,7 +485,6 @@ class _RegistrarPesagemScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Peso atual como referência
                     if (animal != null) ...[
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -380,7 +519,6 @@ class _RegistrarPesagemScreenState
                       const SizedBox(height: 20),
                     ],
 
-                    // ── Novo Peso e Data ──────────────────────────────────
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -429,7 +567,11 @@ class _RegistrarPesagemScreenState
                             double.tryParse(_pesoController.text) ?? 0.0;
                         ref
                             .read(animaisViewModelProvider.notifier)
-                            .registrarPesagem(novoPeso: novoPeso, data: _data);
+                            .registrarHistoricoPesagem(
+                              tipo: HistoricoTipo.pesagem,
+                              novoPeso: novoPeso,
+                              data: _data,
+                            );
                       },
                     ),
 
@@ -451,21 +593,21 @@ class _RegistrarPesagemScreenState
 }
 
 // =============================================================================
-// TELA — REGISTRAR MOVIMENTAÇÃO
+// TELA — REGISTRAR MUDANÇA DE PASTO
 // =============================================================================
 
-class _RegistrarMovimentacaoScreen extends ConsumerStatefulWidget {
-  const _RegistrarMovimentacaoScreen({required this.pastos});
+class _RegistrarMudancaPastoScreen extends ConsumerStatefulWidget {
+  const _RegistrarMudancaPastoScreen({required this.pastos});
 
   final List<PastoModel> pastos;
 
   @override
-  ConsumerState<_RegistrarMovimentacaoScreen> createState() =>
+  ConsumerState<_RegistrarMudancaPastoScreen> createState() =>
       _RegistrarMovimentacaoScreenState();
 }
 
 class _RegistrarMovimentacaoScreenState
-    extends ConsumerState<_RegistrarMovimentacaoScreen> {
+    extends ConsumerState<_RegistrarMudancaPastoScreen> {
   PastoModel? _origem;
   PastoModel? _destino;
   DateTime _data = DateTime.now();
@@ -493,7 +635,6 @@ class _RegistrarMovimentacaoScreenState
   Widget build(BuildContext context) {
     final isLoading = ref.watch(animaisViewModelProvider).isLoading;
 
-    // Opções de destino excluem o pasto já selecionado como origem
     final destinoOpcoes = widget.pastos
         .where((p) => p.id != _origem?.id)
         .toList();
@@ -510,7 +651,6 @@ class _RegistrarMovimentacaoScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -519,7 +659,7 @@ class _RegistrarMovimentacaoScreenState
                   const Expanded(
                     child: Center(
                       child: Text(
-                        'Registrar Movimentação',
+                        'Sair do rebanho e mudar pasto',
                         style: TextStyle(
                           color: AppColors.text,
                           fontSize: 17,
@@ -534,14 +674,12 @@ class _RegistrarMovimentacaoScreenState
               ),
             ),
 
-            // ── Formulário ────────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Pasto Origem ──────────────────────────────────────
                     const BovFieldLabel(label: 'PASTO ORIGEM'),
                     const SizedBox(height: 6),
                     _BovDropdown<PastoModel>(
@@ -551,14 +689,12 @@ class _RegistrarMovimentacaoScreenState
                       hint: 'Selecionar pasto de origem...',
                       onChanged: (p) => setState(() {
                         _origem = p;
-                        // Limpa destino se for o mesmo que o novo origem
                         if (_destino?.id == p?.id) _destino = null;
                       }),
                     ),
 
                     const SizedBox(height: 14),
 
-                    // ── Pasto Destino ─────────────────────────────────────
                     const BovFieldLabel(label: 'PASTO DESTINO'),
                     const SizedBox(height: 6),
                     _BovDropdown<PastoModel>(
@@ -574,7 +710,6 @@ class _RegistrarMovimentacaoScreenState
 
                     const SizedBox(height: 14),
 
-                    // ── Data ──────────────────────────────────────────────
                     const BovFieldLabel(label: 'DATA'),
                     const SizedBox(height: 6),
                     _BovDatePicker(data: _data, onTap: _selecionarData),
@@ -589,10 +724,190 @@ class _RegistrarMovimentacaoScreenState
                           : () {
                               ref
                                   .read(animaisViewModelProvider.notifier)
-                                  .registrarMovimentacao(
+                                  .registrarHistoricoMovimento(
+                                    tipo: HistoricoTipo.sairRebanhoMudarPasto,
                                     pastoOrigemId: _origem!.id,
                                     pastoDestinoId: _destino!.id,
                                     data: _data,
+                                    rebanhoOrigemId: null,
+                                    rebanhoDestinoId: null,
+                                  );
+                            },
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    BovSecondaryButton(
+                      label: 'Cancelar',
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// TELA — REGISTRAR MUDANÇA DE REBANHO
+// =============================================================================
+
+class _RegistrarMudancaRebanhoScreen extends ConsumerStatefulWidget {
+  const _RegistrarMudancaRebanhoScreen({
+    required this.rebanhos,
+    required this.titulo,
+    required this.temRebanho,
+  });
+
+  final List<RebanhoModel> rebanhos;
+  final String titulo;
+  final bool temRebanho;
+
+  @override
+  ConsumerState<_RegistrarMudancaRebanhoScreen> createState() =>
+      _RegistrarMudancaRebanhoScreenState();
+}
+
+class _RegistrarMudancaRebanhoScreenState
+    extends ConsumerState<_RegistrarMudancaRebanhoScreen> {
+  RebanhoModel? _rebanhoOrigem;
+  RebanhoModel? _rebanhoDestino;
+  DateTime _data = DateTime.now();
+
+  Future<void> _selecionarData() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _data,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.accent,
+            surface: AppColors.card,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _data = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(animaisViewModelProvider).isLoading;
+
+    final destinoRebanhos = widget.rebanhos
+        .where((p) => p.id != _rebanhoOrigem?.id)
+        .toList();
+
+    ref.listen(animaisViewModelProvider, (_, next) {
+      next.whenOrNull(
+        data: (_) => Navigator.of(context).pop(),
+        error: (e, _) => showBovErrorSnackBar(context, e.toString()),
+      );
+    });
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  BovBackButton(),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        widget.titulo,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 36),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const BovFieldLabel(label: 'REBANHO ORIGEM'),
+                    const SizedBox(height: 6),
+                    _BovDropdown<RebanhoModel>(
+                      value: _rebanhoOrigem,
+                      items: widget.rebanhos,
+                      itemLabel: (p) => p.nome,
+                      hint: 'Selecionar rebanho de origem...',
+                      onChanged: (p) => setState(() {
+                        _rebanhoOrigem = p;
+                        if (_rebanhoDestino?.id == p?.id) _rebanhoDestino = null;
+                      }),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    const BovFieldLabel(label: 'REBANHO DESTINO'),
+                    const SizedBox(height: 6),
+                    _BovDropdown<RebanhoModel>(
+                      value: _rebanhoDestino,
+                      items: destinoRebanhos,
+                      itemLabel: (p) => p.nome,
+                      hint: _rebanhoOrigem == null
+                          ? 'Selecione a origem primeiro'
+                          : 'Selecionar rebanho de destino...',
+                      enabled: _rebanhoOrigem != null,
+                      onChanged: (p) => setState(() => _rebanhoDestino = p),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    const BovFieldLabel(label: 'DATA'),
+                    const SizedBox(height: 6),
+                    _BovDatePicker(data: _data, onTap: _selecionarData),
+
+                    const SizedBox(height: 24),
+
+                    BovPrimaryButton(
+                      label: 'Registrar Movimentação',
+                      isLoading: isLoading,
+                      onPressed:
+                          _rebanhoOrigem == null || _rebanhoDestino == null
+                          ? null
+                          : () {
+                              final ultimoRegistro = ref
+                                  .read(historicoAnimalListaProvider)
+                                  .value!
+                                  .firstWhere(
+                                    (registro) =>
+                                        registro.tipo != HistoricoTipo.pesagem,
+                                  );
+                              ref
+                                  .read(animaisViewModelProvider.notifier)
+                                  .registrarHistoricoMovimento(
+                                    tipo: widget.temRebanho
+                                        ? HistoricoTipo.mudarRebanho
+                                        : HistoricoTipo.entrarRebanho,
+                                    pastoOrigemId: ultimoRegistro.pastoOrigemId,
+                                    pastoDestinoId: _rebanhoDestino!.pastoId,
+                                    data: _data,
+                                    rebanhoOrigemId:
+                                        ultimoRegistro.rebanhoOrigemId,
+                                    rebanhoDestinoId: _rebanhoDestino!.id,
                                   );
                             },
                     ),
@@ -679,4 +994,122 @@ class _BovDropdown<T> extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> showBovConfirmDialog({
+  required BuildContext context,
+  required IconData icon,
+  required String titulo,
+  required String descricao,
+  required String textoConfirmar,
+  String textoCancelar = 'Cancelar',
+  required VoidCallback onConfirmar,
+}) {
+  return showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) {
+      return Dialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(icon, color: AppColors.accent, size: 32),
+              ),
+
+              const SizedBox(height: 20),
+
+              Text(
+                titulo,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                descricao,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text4,
+                  fontSize: 14,
+                  height: 1.4,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.text4,
+                        side: BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        textoCancelar,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        onConfirmar();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        textoConfirmar,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }

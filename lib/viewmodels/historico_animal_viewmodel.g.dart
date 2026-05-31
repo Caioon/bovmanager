@@ -84,7 +84,7 @@ final class HistoricoAnimalViewModelProvider
 }
 
 String _$historicoAnimalViewModelHash() =>
-    r'93b24252179d0cb19a80c63e5106fc8767340055';
+    r'4ea065a07bc6e0c3d6b1b9606392c7499fec9273';
 
 abstract class _$HistoricoAnimalViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

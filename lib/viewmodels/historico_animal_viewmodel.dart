@@ -27,26 +27,4 @@ class HistoricoAnimalViewModel extends _$HistoricoAnimalViewModel {
 
   HistoricoAnimalService get _service =>
       ref.read(historicoAnimalServiceProvider);
-
-  Future<void> adicionar({
-    required String animalId,
-    required String tipo,
-    required double valor,
-    String? pastoOrigemId,
-    String? pastoDestinoId,
-  }) async {
-    state = const AsyncLoading();
-    try {
-      await _service.adicionar(
-        animalId: animalId,
-        tipo: tipo,
-        valor: valor,
-        pastoOrigemId: pastoOrigemId,
-        pastoDestinoId: pastoDestinoId,
-      );
-      state = const AsyncData(null);
-    } catch (e, st) {
-      state = AsyncError(e, st);
-    }
-  }
 }
