@@ -30,23 +30,20 @@ class PastoRepository {
           .doc(propriedadeId)
           .collection('pastos');
 
-
   // ---------------------------------------------------------------------------
-  // Stream de pastos
+  // Listar — Stream (tempo real)
   // ---------------------------------------------------------------------------
   Stream<List<PastoModel>> listarStream(String propriedadeId) {
     return _col(propriedadeId)
         .orderBy('nome')
         .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((doc) => PastoModel.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+        .map((snap) => snap.docs
+            .map((doc) => PastoModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 
   // ---------------------------------------------------------------------------
-  // Listar todos os pastos de uma propriedade
+  // Listar — Future (busca pontual)
   // ---------------------------------------------------------------------------
   Future<List<PastoModel>> listar(String propriedadeId) async {
     final snap = await _col(propriedadeId).orderBy('nome').get();

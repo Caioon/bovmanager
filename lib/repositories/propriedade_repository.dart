@@ -1,6 +1,5 @@
 import 'package:bov_manager/models/propriedade_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'propriedade_repository.g.dart';
@@ -34,6 +33,14 @@ abstract class PropriedadeRepository {
   });
 
   Future<void> apagarPropriedade({required String propriedadeId});
+
+  Future<PropriedadeModel?> buscarPorId({required String propriedadeId});
+
+  Future<void> salvarCentro({
+    required String propriedadeId,
+    required double lat,
+    required double lng,
+  });
 }
 
 // =============================================================================
@@ -98,5 +105,26 @@ class PropriedadeRepositoryImpl implements PropriedadeRepository {
   @override
   Future<void> apagarPropriedade({required String propriedadeId}) async {
     await _col.doc(propriedadeId).delete();
+  }
+
+  @override
+  Future<PropriedadeModel?> buscarPorId({
+    required String propriedadeId,
+  }) async {
+    final doc = await _col.doc(propriedadeId).get();
+    if (!doc.exists) return null;
+    return PropriedadeModel.fromMap(doc.data()!, doc.id);
+  }
+
+  @override
+  Future<void> salvarCentro({
+    required String propriedadeId,
+    required double lat,
+    required double lng,
+  }) async {
+    await _col.doc(propriedadeId).update({
+      'centroLat': lat,
+      'centroLng': lng,
+    });
   }
 }

@@ -20,7 +20,7 @@ final class RebanhoEmVisualizacaoProvider
         argument: null,
         retry: null,
         name: r'rebanhoEmVisualizacaoProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -42,7 +42,7 @@ final class RebanhoEmVisualizacaoProvider
 }
 
 String _$rebanhoEmVisualizacaoHash() =>
-    r'77bc25e65d03d7ce5f319becd305defbda9bd974';
+    r'159305284dd80a66d16f4b1eb726fc4271a0ed54';
 
 abstract class _$RebanhoEmVisualizacao extends $Notifier<RebanhoModel?> {
   RebanhoModel? build();
@@ -170,7 +170,7 @@ final class RebanhoViewModelProvider
   RebanhoViewModel create() => RebanhoViewModel();
 }
 
-String _$rebanhoViewModelHash() => r'd633275028268ca2ee06bf7bb8130a3f6c7b6fbc';
+String _$rebanhoViewModelHash() => r'eeb491ec535213e65ab4105bdf0075653b13fef7';
 
 abstract class _$RebanhoViewModel extends $AsyncNotifier<void> {
   FutureOr<void> build();

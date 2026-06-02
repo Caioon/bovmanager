@@ -48,7 +48,49 @@ final class AnimaisListaProvider
   }
 }
 
-String _$animaisListaHash() => r'b1811063c8f44002b098f31970f4e80d80c57e28';
+String _$animaisListaHash() => r'b565bedc4b3420664aae7ab2be1f57d8ec3b7a74';
+
+@ProviderFor(animaisListaPropEmVis)
+const animaisListaPropEmVisProvider = AnimaisListaPropEmVisProvider._();
+
+final class AnimaisListaPropEmVisProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<AnimalModel>>,
+          List<AnimalModel>,
+          Stream<List<AnimalModel>>
+        >
+    with
+        $FutureModifier<List<AnimalModel>>,
+        $StreamProvider<List<AnimalModel>> {
+  const AnimaisListaPropEmVisProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'animaisListaPropEmVisProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$animaisListaPropEmVisHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<AnimalModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<AnimalModel>> create(Ref ref) {
+    return animaisListaPropEmVis(ref);
+  }
+}
+
+String _$animaisListaPropEmVisHash() =>
+    r'96ae8d1df5f363586ecf6cf5c1e050d4416c3242';
 
 @ProviderFor(AnimalEmVisualizacao)
 const animalEmVisualizacaoProvider = AnimalEmVisualizacaoProvider._();
@@ -136,7 +178,7 @@ final class AnimaisViewModelProvider
   }
 }
 
-String _$animaisViewModelHash() => r'1c1f5d259d222476f47ca93628471e3fc48d16bc';
+String _$animaisViewModelHash() => r'c2165da50a32c09674429f84c19bf064263596b4';
 
 abstract class _$AnimaisViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

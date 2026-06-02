@@ -45,4 +45,8 @@ class PropriedadeService {
       propriedadeId: propriedadeId,
     );
   }
+
+  Future<PropriedadeModel?> buscarPorId({required String propriedadeId}) {
+    return _repo.buscarPorId(propriedadeId: propriedadeId);
+  }
 }

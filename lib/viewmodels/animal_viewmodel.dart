@@ -1,4 +1,5 @@
 import 'package:bov_manager/models/animal_model.dart';
+import 'package:bov_manager/models/historico_tipo.dart';
 import 'package:bov_manager/repositories/usuario_repository.dart';
 import 'package:bov_manager/services/animal_service.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
@@ -12,13 +13,17 @@ part 'animal_viewmodel.g.dart';
 
 @riverpod
 Stream<List<AnimalModel>> animaisLista(Ref ref) {
-  final propriedadeId = ref.watch(propriedadeSelecionadaProvider).value?.id;
-
-  if (propriedadeId == null) return const Stream.empty();
+  final propriedadeId = ref.watch(propriedadeSelecionadaProvider).value!.id;
 
   return ref.read(animalServiceProvider).listar(propriedadeId);
 }
 
+@riverpod
+Stream<List<AnimalModel>> animaisListaPropEmVis(Ref ref) {
+  final propriedadeId = ref.watch(propriedadeEmVisualizacaoProvider)!.id;
+
+  return ref.read(animalServiceProvider).listar(propriedadeId);
+}
 // =============================================================================
 // ANIMAL EM VISUALIZAÇÃO (detalhes + histórico)
 // =============================================================================
@@ -41,6 +46,7 @@ class AnimaisViewModel extends _$AnimaisViewModel {
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
+  // ignore: unused_element
   String get _uid => ref.read(usuarioAtualProvider).requireValue!.id;
 
   String get _propriedadeId =>
@@ -58,7 +64,7 @@ class AnimaisViewModel extends _$AnimaisViewModel {
     required String raca,
     required double pesoAtual,
     required DateTime dataNascimento,
-    required String rebanhoId,
+    required String? rebanhoId,
     String? pastoDestinoId, // ← opcional: pasto inicial do animal
   }) async {
     state = const AsyncLoading();
@@ -67,7 +73,7 @@ class AnimaisViewModel extends _$AnimaisViewModel {
         nome: nome,
         brinco: brinco,
         raca: raca,
-        pesoAtual: pesoAtual,
+        novoPeso: pesoAtual,
         dataNascimento: dataNascimento,
         rebanhoId: rebanhoId,
         propriedadeId: _propriedadeId, // ← usa o getter
@@ -114,7 +120,6 @@ class AnimaisViewModel extends _$AnimaisViewModel {
                 raca: raca,
                 pesoAtual: pesoAtual,
                 dataNascimento: emVisualizacao.dataNascimento,
-                rebanhoId: emVisualizacao.rebanhoId,
                 fotoUrl: emVisualizacao.fotoUrl,
               ),
             );
@@ -150,34 +155,42 @@ class AnimaisViewModel extends _$AnimaisViewModel {
   // REGISTRAR PESAGEM
   // =========================
 
-  Future<void> registrarPesagem({
+  Future<void> registrarHistoricoPesagem({
     required double novoPeso,
     required DateTime data,
+    required HistoricoTipo tipo,
   }) async {
     final animal = ref.read(animalEmVisualizacaoProvider);
     if (animal == null) return;
 
     state = const AsyncLoading();
+
     try {
-      await _service.registrarPesagem(
+      await _service.registrarHistorico(
         animalId: animal.id,
         novoPeso: novoPeso,
         data: data,
+        tipo: tipo,
+        pastoOrigemId: null,
+        pastoDestinoId: null,
+        rebanhoOrigemId: null,
+        rebanhoDestinoId: null,
       );
 
       // Atualização otimista local
-      ref.read(animalEmVisualizacaoProvider.notifier).abrir(
-        AnimalModel(
-          id: animal.id,
-          nome: animal.nome,
-          brinco: animal.brinco,
-          raca: animal.raca,
-          pesoAtual: novoPeso,
-          dataNascimento: animal.dataNascimento,
-          rebanhoId: animal.rebanhoId,
-          fotoUrl: animal.fotoUrl,
-        ),
-      );
+      ref
+          .read(animalEmVisualizacaoProvider.notifier)
+          .abrir(
+            AnimalModel(
+              id: animal.id,
+              nome: animal.nome,
+              brinco: animal.brinco,
+              raca: animal.raca,
+              pesoAtual: novoPeso,
+              dataNascimento: animal.dataNascimento,
+              fotoUrl: animal.fotoUrl,
+            ),
+          );
 
       state = const AsyncData(null);
     } catch (e, st) {
@@ -185,25 +198,29 @@ class AnimaisViewModel extends _$AnimaisViewModel {
     }
   }
 
-  // =========================
-  // REGISTRAR MOVIMENTAÇÃO
-  // =========================
-
-  Future<void> registrarMovimentacao({
-    required String pastoOrigemId,
-    required String pastoDestinoId,
+  Future<void> registrarHistoricoMovimento({
     required DateTime data,
+    required HistoricoTipo tipo,
+    String? pastoOrigemId,
+    String? pastoDestinoId,
+    String? rebanhoOrigemId,
+    String? rebanhoDestinoId,
   }) async {
     final animal = ref.read(animalEmVisualizacaoProvider);
     if (animal == null) return;
 
     state = const AsyncLoading();
+
     try {
-      await _service.registrarMovimentacao(
+      await _service.registrarHistorico(
         animalId: animal.id,
+        novoPeso: null,
+        data: data,
+        tipo: tipo,
         pastoOrigemId: pastoOrigemId,
         pastoDestinoId: pastoDestinoId,
-        data: data,
+        rebanhoOrigemId: rebanhoOrigemId,
+        rebanhoDestinoId: rebanhoDestinoId,
       );
 
       state = const AsyncData(null);

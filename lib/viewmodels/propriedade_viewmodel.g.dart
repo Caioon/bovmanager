@@ -48,7 +48,7 @@ final class PropriedadesListaProvider
   }
 }
 
-String _$propriedadesListaHash() => r'72e0709518c21d7e085674407555360f11b6e52e';
+String _$propriedadesListaHash() => r'bb3a7aa1cdabef00003aa9b86ae85dbc9634479c';
 
 @ProviderFor(PropriedadeSelecionada)
 const propriedadeSelecionadaProvider = PropriedadeSelecionadaProvider._();

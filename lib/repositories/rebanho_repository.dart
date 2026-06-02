@@ -31,7 +31,7 @@ class RebanhoRepository {
           .collection('rebanhos');
 
   // ---------------------------------------------------------------------------
-  // Stream em tempo real (usado pelo StreamProvider da lista)
+  // Stream em tempo real
   // ---------------------------------------------------------------------------
   Stream<List<RebanhoModel>> listarStream(String propriedadeId) {
     return _col(propriedadeId)
@@ -45,7 +45,7 @@ class RebanhoRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // Busca pontual (usado pelo service para validações)
+  // Busca pontual
   // ---------------------------------------------------------------------------
   Future<List<RebanhoModel>> listar(String propriedadeId) async {
     final snap = await _col(propriedadeId)
@@ -64,14 +64,18 @@ class RebanhoRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // Mover (atualiza o pastoId)
+  // Mover — participa de um batch externo
   // ---------------------------------------------------------------------------
-  Future<void> mover({
+  void moverEmBatch({
     required String propriedadeId,
     required String rebanhoId,
     required String novoPastoId,
-  }) async {
-    await _col(propriedadeId).doc(rebanhoId).update({'pastoId': novoPastoId});
+    required WriteBatch batch,
+  }) {
+    batch.update(
+      _col(propriedadeId).doc(rebanhoId),
+      {'pastoId': novoPastoId},
+    );
   }
 
   // ---------------------------------------------------------------------------

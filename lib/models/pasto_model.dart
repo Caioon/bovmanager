@@ -4,6 +4,7 @@ class PastoModel {
   final String propriedadeId;
   final double area;
   final String descricao;
+  final int? limiteAnimais;
 
   PastoModel({
     required this.id,
@@ -11,6 +12,7 @@ class PastoModel {
     required this.propriedadeId,
     required this.area,
     required this.descricao,
+    this.limiteAnimais,
   });
 
   factory PastoModel.fromMap(
@@ -23,6 +25,7 @@ class PastoModel {
       propriedadeId: map['propriedadeId'] ?? '',
       area: (map['area'] ?? 0).toDouble(),
       descricao: map['descricao'] ?? '',
+      limiteAnimais: map['limiteAnimais'] as int?,
     );
   }
 
@@ -32,6 +35,7 @@ class PastoModel {
       'propriedadeId': propriedadeId,
       'area': area,
       'descricao': descricao,
+      if (limiteAnimais != null) 'limiteAnimais': limiteAnimais,
     };
   }
 }

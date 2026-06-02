@@ -9,10 +9,92 @@ part of 'pasto_viewmodel.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(pastosLista)
-const pastosListaProvider = PastosListaProvider._();
+@ProviderFor(pastosListaPropSelecionada)
+const pastosListaPropSelecionadaProvider =
+    PastosListaPropSelecionadaProvider._();
 
-final class PastosListaProvider
+final class PastosListaPropSelecionadaProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<PastoModel>>,
+          List<PastoModel>,
+          FutureOr<List<PastoModel>>
+        >
+    with $FutureModifier<List<PastoModel>>, $FutureProvider<List<PastoModel>> {
+  const PastosListaPropSelecionadaProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pastosListaPropSelecionadaProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pastosListaPropSelecionadaHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<PastoModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<PastoModel>> create(Ref ref) {
+    return pastosListaPropSelecionada(ref);
+  }
+}
+
+String _$pastosListaPropSelecionadaHash() =>
+    r'7eb103b8da8fdb501073d42c3d344d1309106334';
+
+@ProviderFor(pastosListaPropEmVisualizacao)
+const pastosListaPropEmVisualizacaoProvider =
+    PastosListaPropEmVisualizacaoProvider._();
+
+final class PastosListaPropEmVisualizacaoProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<PastoModel>>,
+          List<PastoModel>,
+          FutureOr<List<PastoModel>>
+        >
+    with $FutureModifier<List<PastoModel>>, $FutureProvider<List<PastoModel>> {
+  const PastosListaPropEmVisualizacaoProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pastosListaPropEmVisualizacaoProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pastosListaPropEmVisualizacaoHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<PastoModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<PastoModel>> create(Ref ref) {
+    return pastosListaPropEmVisualizacao(ref);
+  }
+}
+
+String _$pastosListaPropEmVisualizacaoHash() =>
+    r'd15a311a1b0daaa093ff0f73f3ab1a466e4983b2';
+
+@ProviderFor(pastosSelecionados)
+const pastosSelecionadosProvider = PastosSelecionadosProvider._();
+
+final class PastosSelecionadosProvider
     extends
         $FunctionalProvider<
           AsyncValue<List<PastoModel>>,
@@ -20,19 +102,19 @@ final class PastosListaProvider
           Stream<List<PastoModel>>
         >
     with $FutureModifier<List<PastoModel>>, $StreamProvider<List<PastoModel>> {
-  const PastosListaProvider._()
+  const PastosSelecionadosProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'pastosListaProvider',
+        name: r'pastosSelecionadosProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$pastosListaHash();
+  String debugGetCreateSourceHash() => _$pastosSelecionadosHash();
 
   @$internal
   @override
@@ -42,11 +124,12 @@ final class PastosListaProvider
 
   @override
   Stream<List<PastoModel>> create(Ref ref) {
-    return pastosLista(ref);
+    return pastosSelecionados(ref);
   }
 }
 
-String _$pastosListaHash() => r'95a94aa45086a2615c856a73ed2feffa37bb2f32';
+String _$pastosSelecionadosHash() =>
+    r'27891d79bdf51447701f4b9ba680fd2cf34e2596';
 
 @ProviderFor(PastoEmVisualizacao)
 const pastoEmVisualizacaoProvider = PastoEmVisualizacaoProvider._();
@@ -102,46 +185,6 @@ abstract class _$PastoEmVisualizacao extends $Notifier<PastoModel?> {
   }
 }
 
-@ProviderFor(pastosSelecionados)
-const pastosSelecionadosProvider = PastosSelecionadosProvider._();
-
-final class PastosSelecionadosProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<PastoModel>>,
-          List<PastoModel>,
-          Stream<List<PastoModel>>
-        >
-    with $FutureModifier<List<PastoModel>>, $StreamProvider<List<PastoModel>> {
-  const PastosSelecionadosProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'pastosSelecionadosProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$pastosSelecionadosHash();
-
-  @$internal
-  @override
-  $StreamProviderElement<List<PastoModel>> $createElement(
-    $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
-
-  @override
-  Stream<List<PastoModel>> create(Ref ref) {
-    return pastosSelecionados(ref);
-  }
-}
-
-String _$pastosSelecionadosHash() =>
-    r'f4b593b98f741d1db2ec171705f8a187b6dcf602';
-
 @ProviderFor(PastosViewModel)
 const pastosViewModelProvider = PastosViewModelProvider._();
 
@@ -174,7 +217,7 @@ final class PastosViewModelProvider
   }
 }
 
-String _$pastosViewModelHash() => r'f026e17fedd89c8db313da6bb909b076c63a8268';
+String _$pastosViewModelHash() => r'eb01fefc48004f29258d1ae025d7d6d2352324ae';
 
 abstract class _$PastosViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

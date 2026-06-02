@@ -13,10 +13,7 @@ class RebanhoModel {
     required this.dataCadastro,
   });
 
-  factory RebanhoModel.fromMap(
-    Map<String, dynamic> map,
-    String docId,
-  ) {
+  factory RebanhoModel.fromMap(Map<String, dynamic> map, String docId) {
     return RebanhoModel(
       id: docId,
       nome: map['nome'] ?? '',

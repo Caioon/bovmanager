@@ -23,4 +23,13 @@ class UsuarioModel {
   Map<String, dynamic> toMap() {
     return {'nome': nome, 'email': email, 'cpf': cpf};
   }
+
+  UsuarioModel copyWith({String? nome, String? email, String? cpf}) {
+    return UsuarioModel(
+      id: id,
+      nome: nome ?? this.nome,
+      email: email ?? this.email,
+      cpf: cpf ?? this.cpf,
+    );
+  }
 }

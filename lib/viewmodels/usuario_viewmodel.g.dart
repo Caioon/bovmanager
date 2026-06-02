@@ -41,7 +41,7 @@ final class UsuarioViewModelProvider
   }
 }
 
-String _$usuarioViewModelHash() => r'e857aab293c26cfb856a037827e0ecc528693df9';
+String _$usuarioViewModelHash() => r'5de656a9c71da2b1e19b0f9a9d7cbcd5bb67a0b1';
 
 abstract class _$UsuarioViewModel extends $Notifier<AsyncValue<UsuarioModel?>> {
   AsyncValue<UsuarioModel?> build();

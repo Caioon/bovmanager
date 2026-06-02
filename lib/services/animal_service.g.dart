@@ -48,4 +48,4 @@ final class AnimalServiceProvider
   }
 }
 
-String _$animalServiceHash() => r'2522807003f969e2ed4acfe6eb886395e37db1da';
+String _$animalServiceHash() => r'65d8700877e5a21d2ed399bcb83b6cff47ca2c92';

@@ -1,16 +1,55 @@
 import 'package:bov_manager/models/propriedade_model.dart';
 import 'package:bov_manager/repositories/usuario_repository.dart';
+import 'package:bov_manager/services/acesso_compartilhado_service.dart';
 import 'package:bov_manager/services/propriedade_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'propriedade_viewmodel.g.dart';
 
+// =============================================================================
+// LISTA DE PROPRIEDADES (próprias + compartilhadas)
+// =============================================================================
+//
+// Combina duas fontes:
+//   1. Stream das propriedades onde o usuário é proprietário
+//   2. Busca pontual das propriedades compartilhadas com o usuário via acessos
+//
+// Como o Stream das próprias emite a cada mudança no Firestore, usamos
+// asyncMap para reagir a cada emissão e buscar as compartilhadas junto.
+//
 @riverpod
 Stream<List<PropriedadeModel>> propriedadesLista(Ref ref) {
   final uid = ref.watch(usuarioAtualProvider.select((s) => s.value?.id));
   if (uid == null) return const Stream.empty();
-  return ref.read(propriedadeServiceProvider).listar(uid);
+
+  final propriedadeService = ref.read(propriedadeServiceProvider);
+  final acessoService = ref.read(acessoCompartilhadoServiceProvider);
+
+  // Parte 1: stream das propriedades próprias.
+  // A cada emissão, buscamos também as compartilhadas e combinamos.
+  return propriedadeService.listar(uid).asyncMap((proprias) async {
+    // Parte 2: IDs das propriedades compartilhadas com este usuário
+    final idsCompartilhadas = await acessoService
+        .listarPropriedadeIdsCompartilhadas(uid);
+
+    // Busca os modelos de cada propriedade compartilhada em paralelo,
+    // ignorando IDs que o usuário já seja dono (evita duplicatas)
+    final idsProprias = proprias.map((p) => p.id).toSet();
+
+    final compartilhadasFutures = idsCompartilhadas
+        .where((id) => !idsProprias.contains(id))
+        .map((id) => propriedadeService.buscarPorId(propriedadeId: id));
+
+    final compartilhadasResults = await Future.wait(compartilhadasFutures);
+
+    final compartilhadas = compartilhadasResults
+        .whereType<PropriedadeModel>()
+        .toList();
+
+    // Próprias primeiro, depois as compartilhadas
+    return [...proprias, ...compartilhadas];
+  });
 }
 
 // Propriedade ativa do app (dashboard, header, etc.)
