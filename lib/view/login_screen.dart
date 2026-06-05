@@ -1,7 +1,6 @@
 import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
-import 'package:bov_manager/repositories/usuario_repository.dart';
 import 'package:bov_manager/viewmodels/usuario_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
