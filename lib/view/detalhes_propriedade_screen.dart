@@ -2,7 +2,10 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
+import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
+import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
+import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -47,6 +50,14 @@ class _DetalhesPropriedadeScreenState
     final dataCadastro = DateFormat(
       'dd/MM/yyyy',
     ).format(propriedadeAtual.dataCadastro);
+
+    final animaisAsync = ref.watch(animaisListaPropEmVisProvider);
+    final pastosAsync = ref.watch(pastosListaPropEmVisualizacaoProvider);
+    final rebanhoAsync = ref.watch(rebanhoListaProvider);
+
+    final totalAnimais = animaisAsync.value?.length ?? 0;
+    final totalPastos = pastosAsync.value?.length ?? 0;
+    final totalRebanhos = rebanhoAsync.value?.length ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -158,14 +169,12 @@ class _DetalhesPropriedadeScreenState
                     Row(
                       children: [
                         _MetricTile(
-                          // TODO: buscar totalPastos da subcoleção pastos
-                          value: '-',
+                          value: totalPastos.toString(),
                           label: 'Pastos',
                         ),
                         const SizedBox(width: 10),
                         _MetricTile(
-                          // TODO: buscar totalRebanhos da subcoleção rebanhos
-                          value: '-',
+                          value: totalRebanhos.toString(),
                           label: 'Rebanhos',
                         ),
                       ],
@@ -174,8 +183,7 @@ class _DetalhesPropriedadeScreenState
                     Row(
                       children: [
                         _MetricTile(
-                          // TODO: buscar totalAnimais da subcoleção animais
-                          value: '-',
+                          value: totalAnimais.toString(),
                           label: 'Animais',
                         ),
                         const SizedBox(width: 10),
@@ -202,9 +210,7 @@ class _DetalhesPropriedadeScreenState
                           label: 'Mapa',
                           iconBgColor: AppColors.accentBg,
                           iconColor: AppColors.accent,
-                          onTap: () {
-                            // TODO: AppCoordinator.goToMapa(context, propriedadeAtual);
-                          },
+                          onTap: () => AppCoordinator.goToMapa(context),
                         ),
                         _ShortcutCard(
                           icon: Icons.grass_rounded,
@@ -396,6 +402,7 @@ class _MetricTile extends StatelessWidget {
   const _MetricTile({
     required this.value,
     required this.label,
+    // ignore: unused_element_parameter
     this.valueColor,
   });
 

@@ -2,10 +2,33 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
+import 'package:bov_manager/repositories/usuario_repository.dart';
+import 'package:bov_manager/services/acesso_compartilhado_service.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
+// =============================================================================
+// PROVIDER — IDs das propriedades compartilhadas com o usuário atual
+// =============================================================================
+
+// Retorna o Set de propriedadeIds que foram compartilhados COM o usuário logado.
+// Usado pelo card para decidir se exibe o badge "Propriedade compartilhada".
+final propriedadesCompartilhadasIdsProvider =
+    FutureProvider<Set<String>>((ref) async {
+      final usuarioAsync = ref.watch(usuarioAtualProvider);
+      final usuario = usuarioAsync.value;
+      if (usuario == null) return {};
+
+      final service = ref.read(acessoCompartilhadoServiceProvider);
+      final ids = await service.listarPropriedadeIdsCompartilhadas(usuario.id);
+      return ids.toSet();
+    });
+
+// =============================================================================
+// TELA DE PROPRIEDADES
+// =============================================================================
 
 class PropriedadesScreen extends ConsumerWidget {
   const PropriedadesScreen({super.key});
@@ -13,6 +36,8 @@ class PropriedadesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final listaState = ref.watch(propriedadesListaProvider);
+    final compartilhadasAsync = ref.watch(propriedadesCompartilhadasIdsProvider);
+    final idsCompartilhadas = compartilhadasAsync.value ?? {};
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -77,7 +102,7 @@ class PropriedadesScreen extends ConsumerWidget {
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                         itemCount: lista.length + 1,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, i) {
                           if (i == lista.length) {
                             return Padding(
@@ -91,15 +116,16 @@ class PropriedadesScreen extends ConsumerWidget {
                               ),
                             );
                           }
+                          final prop = lista[i];
                           return _PropriedadeCard(
-                            propriedade: lista[i],
-                            // Na PropriedadesScreen, ao tocar no card:
+                            propriedade: prop,
+                            isCompartilhada: idsCompartilhadas.contains(prop.id),
                             onTap: () {
                               ref
                                   .read(
                                     propriedadeEmVisualizacaoProvider.notifier,
                                   )
-                                  .abrir(lista[i]);
+                                  .abrir(prop);
                               AppCoordinator.goToDetalhesPropriedade(context);
                             },
                           );
@@ -119,10 +145,15 @@ class PropriedadesScreen extends ConsumerWidget {
 // =============================================================================
 
 class _PropriedadeCard extends StatelessWidget {
-  const _PropriedadeCard({required this.propriedade, required this.onTap});
+  const _PropriedadeCard({
+    required this.propriedade,
+    required this.onTap,
+    required this.isCompartilhada,
+  });
 
   final PropriedadeModel propriedade;
   final VoidCallback onTap;
+  final bool isCompartilhada;
 
   @override
   Widget build(BuildContext context) {
@@ -141,20 +172,25 @@ class _PropriedadeCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Ícone
             Container(
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: AppColors.accentBg,
+                color: isCompartilhada
+                    ? AppColors.border2
+                    : AppColors.accentBg,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.home_work_rounded,
-                color: AppColors.accent,
+                color: isCompartilhada ? AppColors.text4 : AppColors.accent,
                 size: 22,
               ),
             ),
             const SizedBox(width: 12),
+
+            // Textos
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,17 +205,39 @@ class _PropriedadeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    'Cadastrada em $dataCadastro',
-                    style: const TextStyle(
-                      color: AppColors.text4,
-                      fontSize: 12,
-                      fontFamily: 'DM Sans',
+                  if (isCompartilhada)
+                    // Badge de propriedade compartilhada
+                    Row(
+                      children: const [
+                        Icon(
+                          Icons.people_alt_outlined,
+                          color: AppColors.text4,
+                          size: 11,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Propriedade compartilhada',
+                          style: TextStyle(
+                            color: AppColors.text4,
+                            fontSize: 11,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      'Cadastrada em $dataCadastro',
+                      style: const TextStyle(
+                        color: AppColors.text4,
+                        fontSize: 12,
+                        fontFamily: 'DM Sans',
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
+
             const Icon(
               Icons.chevron_right_rounded,
               color: AppColors.text4,
