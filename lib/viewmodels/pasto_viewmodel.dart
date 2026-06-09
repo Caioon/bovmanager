@@ -13,13 +13,6 @@ Future<List<PastoModel>> pastosListaPropSelecionada(Ref ref) async {
   return ref.read(pastoServiceProvider).listar(propriedadeId);
 }
 
-//TODO: PAREI AQUI
-//o claude bugou
-//o problema a ser resolvido era: a tela de pastos nao atualiza ao apagar
-//o problema é justamente por ser um future, e nao um stream
-//ele tinha mandado o código pra corrigir e tinha falado pra remover o ref.invalidate
-//perguntei se era pra apagar os 3, bugou a conversa, e agora nao tenho mais acesso ao trecho final do prompt
-//tenho que tentar denovo
 @riverpod
 Future<List<PastoModel>> pastosListaPropEmVisualizacao(Ref ref) async {
   final propriedadeId = ref.watch(propriedadeEmVisualizacaoProvider)?.id;
