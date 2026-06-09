@@ -1,10 +1,12 @@
+import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
+import 'package:bov_manager/models/rebanho_model.dart';
 import 'package:bov_manager/services/pasto_service.dart';
+import 'package:bov_manager/services/rebanho_service.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
-import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,19 +22,21 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
   final _nomeController = TextEditingController();
   final _brincoController = TextEditingController();
   final _pesoController = TextEditingController();
-  final _rebanhoController = TextEditingController();
 
   String _racaSelecionada = '';
   DateTime _dataNascimento = DateTime.now();
 
-  // ── Estado do seletor de pasto ────────────────────────────────────────────
-  // Propriedade escolhida no primeiro dropdown (independente da selecionada)
-  PropriedadeModel? _propriedadePasto;
-  // Lista de pastos carregada ao escolher a propriedade
+  PropriedadeModel? _propriedadeSelecionada;
+  // ── Rebanho ───────────────────────────────────────────────────────────────
+  List<RebanhoModel> _rebanhos = [];
+  bool _carregandoRebanhos = false;
+  RebanhoModel? _rebanhoSelecionado;
+
+  // ── Pasto destino ─────────────────────────────────────────────────────────
   List<PastoModel> _pastos = [];
   bool _carregandoPastos = false;
-  // Pasto escolhido no segundo dropdown
   PastoModel? _pastoDestino;
+  bool _usarRebanho = false;
 
   static const _racas = [
     'Nelore',
@@ -51,7 +55,6 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
     _nomeController.dispose();
     _brincoController.dispose();
     _pesoController.dispose();
-    _rebanhoController.dispose();
     super.dispose();
   }
 
@@ -74,35 +77,10 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
     if (picked != null) setState(() => _dataNascimento = picked);
   }
 
-  // Ao escolher uma propriedade no dropdown, carrega os pastos dela
-  Future<void> _onPropriedadePastoSelecionada(PropriedadeModel prop) async {
-    setState(() {
-      _propriedadePasto = prop;
-      _pastos = [];
-      _pastoDestino = null;
-      _carregandoPastos = true;
-    });
-
-    try {
-      final pastos = await ref.read(pastosListaProvider.future);
-      if (mounted) {
-        setState(() {
-          _pastos = pastos;
-          _carregandoPastos = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _carregandoPastos = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(animaisViewModelProvider).isLoading;
-
-    // Lista de todas as propriedades do usuário — apenas para o seletor de pasto
     final propriedadesAsync = ref.watch(propriedadesListaProvider);
-
     ref.listen(animaisViewModelProvider, (_, next) {
       next.whenOrNull(
         data: (_) => Navigator.of(context).pop(),
@@ -251,78 +229,164 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 14),
-
-                    // ── Rebanho ───────────────────────────────────────────
-                    // TODO: substituir por dropdown com lista real de rebanhos
-                    const BovFieldLabel(label: 'ID DO REBANHO'),
-                    const SizedBox(height: 6),
-                    BovTextField(
-                      controller: _rebanhoController,
-                      hintText: 'ID do rebanho',
-                      textInputAction: TextInputAction.next,
-                    ),
-
                     const SizedBox(height: 20),
-
-                    // ── Pasto Destino (opcional) ──────────────────────────
-                    Row(
-                      children: [
-                        const Text(
-                          'PASTO DESTINO',
-                          style: TextStyle(
-                            color: AppColors.text4,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.0,
-                            fontFamily: 'DM Sans',
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.border2,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'OPCIONAL',
-                            style: TextStyle(
-                              color: AppColors.text4,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                              fontFamily: 'DM Sans',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    // =========================================================
+                    // ── Pasto / Rebanho ───────────────────────────────────────
+                    // =========================================================
+                    const BovFieldLabel(label: 'PASTO / REBANHO'),
                     const SizedBox(height: 4),
+
                     const Text(
-                      'Selecione a propriedade e depois o pasto onde o animal será alocado.',
+                      'Escolha um pasto ou um rebanho.',
                       style: TextStyle(
                         color: AppColors.text4,
                         fontSize: 12,
                         fontFamily: 'DM Sans',
                       ),
                     ),
+
                     const SizedBox(height: 10),
 
-                    // Dropdown 1: Propriedade
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_usarRebanho == false) return;
+                                setState(() {
+                                  _usarRebanho = false;
+                                });
+                                // Se a propriedade já está selecionada e os pastos
+                                // ainda não foram carregados, busca agora.
+                                if (_propriedadeSelecionada != null &&
+                                    _pastos.isEmpty &&
+                                    !_carregandoPastos) {
+                                  setState(() => _carregandoPastos = true);
+                                  ref
+                                      .read(pastoServiceProvider)
+                                      .listar(_propriedadeSelecionada!.id)
+                                      .then((pastos) {
+                                        if (!mounted) return;
+                                        setState(() {
+                                          _pastos = pastos;
+                                          _carregandoPastos = false;
+                                        });
+                                      })
+                                      .catchError((_) {
+                                        if (!mounted) return;
+                                        setState(
+                                          () => _carregandoPastos = false,
+                                        );
+                                      });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: !_usarRebanho
+                                      ? AppColors.accentBg
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Pasto',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: !_usarRebanho
+                                        ? AppColors.accent
+                                        : AppColors.text4,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_usarRebanho == true) return;
+                                setState(() {
+                                  _usarRebanho = true;
+                                });
+                                // Se a propriedade já está selecionada e os rebanhos
+                                // ainda não foram carregados, busca agora.
+                                if (_propriedadeSelecionada != null &&
+                                    _rebanhos.isEmpty &&
+                                    !_carregandoRebanhos) {
+                                  setState(() => _carregandoRebanhos = true);
+                                  ref
+                                      .read(rebanhoServiceProvider)
+                                      .listar(_propriedadeSelecionada!.id)
+                                      .then((rebanhos) {
+                                        if (!mounted) return;
+                                        setState(() {
+                                          _rebanhos = rebanhos;
+                                          _carregandoRebanhos = false;
+                                        });
+                                      })
+                                      .catchError((_) {
+                                        if (!mounted) return;
+                                        setState(
+                                          () => _carregandoRebanhos = false,
+                                        );
+                                      });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _usarRebanho
+                                      ? AppColors.accentBg
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Rebanho',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _usarRebanho
+                                        ? AppColors.accent
+                                        : AppColors.text4,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ── Propriedade ──────────────────────────────────────────
                     propriedadesAsync.when(
                       loading: () => const _DropdownSkeleton(
                         label: 'Carregando propriedades...',
                       ),
-                      error: (_, __) => const _DropdownSkeleton(
+
+                      error: (_, _) => const _DropdownSkeleton(
                         label: 'Erro ao carregar propriedades',
                       ),
+
                       data: (propriedades) => _BovDropdown<PropriedadeModel>(
-                        value: _propriedadePasto,
+                        value: _propriedadeSelecionada,
                         hint: 'Selecionar propriedade',
+
                         items: propriedades
                             .map(
                               (p) => DropdownMenuItem(
@@ -331,68 +395,191 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                               ),
                             )
                             .toList(),
-                        onChanged: (p) {
-                          if (p != null) _onPropriedadePastoSelecionada(p);
+
+                        onChanged: (p) async {
+                          if (p == null) return;
+
+                          setState(() {
+                            _propriedadeSelecionada = p;
+
+                            _rebanhos = [];
+                            _rebanhoSelecionado = null;
+                            _pastos = [];
+                            _pastoDestino = null;
+
+                            _carregandoRebanhos = _usarRebanho;
+                            _carregandoPastos = !_usarRebanho;
+                          });
+
+                          try {
+                            if (_usarRebanho) {
+                              final rebanhos = await ref
+                                  .read(rebanhoServiceProvider)
+                                  .listar(p.id);
+
+                              if (!mounted) return;
+
+                              setState(() {
+                                _rebanhos = rebanhos;
+                                _carregandoRebanhos = false;
+                              });
+                            } else {
+                              final pastos = await ref
+                                  .read(pastoServiceProvider)
+                                  .listar(p.id);
+
+                              if (!mounted) return;
+
+                              setState(() {
+                                _pastos = pastos;
+                                _carregandoPastos = false;
+                              });
+                            }
+                          } catch (_) {
+                            if (!mounted) return;
+
+                            setState(() {
+                              _carregandoRebanhos = false;
+                              _carregandoPastos = false;
+                            });
+                          }
                         },
                       ),
                     ),
 
-                    // Dropdown 2: Pasto — só aparece se uma propriedade foi escolhida
-                    if (_propriedadePasto != null) ...[
+                    // ── Conteúdo dinâmico ────────────────────────────────────
+                    if (_propriedadeSelecionada != null) ...[
                       const SizedBox(height: 10),
-                      if (_carregandoPastos)
-                        const _DropdownSkeleton(label: 'Carregando pastos...')
-                      else if (_pastos.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 13,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: const Text(
-                            'Nenhum pasto cadastrado nesta propriedade',
-                            style: TextStyle(
-                              color: AppColors.text4,
-                              fontSize: 14,
-                              fontFamily: 'DM Sans',
-                            ),
-                          ),
-                        )
-                      else
-                        _BovDropdown<PastoModel>(
-                          value: _pastoDestino,
-                          hint: 'Selecionar pasto (opcional)',
-                          items: [
-                            // Opção explícita de "nenhum"
-                            const DropdownMenuItem<PastoModel>(
-                              value: null,
-                              child: Text('Nenhum pasto'),
-                            ),
-                            ..._pastos.map(
-                              (p) => DropdownMenuItem(
-                                value: p,
-                                child: Text(
-                                  p.nome,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (p) => setState(() => _pastoDestino = p),
-                        ),
-                    ],
 
+                      if (_usarRebanho) ...[
+                        if (_carregandoRebanhos)
+                          const _DropdownSkeleton(
+                            label: 'Carregando rebanhos...',
+                          )
+                        else if (_rebanhos.isEmpty)
+                          _InfoBox(
+                            mensagem:
+                                'Nenhum rebanho cadastrado nesta propriedade.',
+                            botaoLabel: 'Criar rebanho',
+                            onBotao: () async {
+                              await AppCoordinator.goToNovoRebanho(
+                                context,
+                                propriedadeId: _propriedadeSelecionada!.id,
+                              );
+
+                              if (!mounted) return;
+
+                              if (_propriedadeSelecionada != null) {
+                                final rebanhos = await ref
+                                    .read(rebanhoServiceProvider)
+                                    .listar(_propriedadeSelecionada!.id);
+
+                                if (!mounted) return;
+
+                                setState(() {
+                                  _rebanhos = rebanhos;
+                                });
+                              }
+                            },
+                          )
+                        else
+                          _BovDropdown<RebanhoModel>(
+                            value: _rebanhoSelecionado,
+                            hint: 'Selecionar rebanho',
+
+                            items: _rebanhos
+                                .map(
+                                  (r) => DropdownMenuItem(
+                                    value: r,
+                                    child: Text(
+                                      r.nome,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+
+                            onChanged: (r) {
+                              setState(() {
+                                _rebanhoSelecionado = r;
+                              });
+                            },
+                          ),
+                      ] else ...[
+                        if (_carregandoPastos)
+                          const _DropdownSkeleton(label: 'Carregando pastos...')
+                        else if (_pastos.isEmpty)
+                          _InfoBox(
+                            mensagem:
+                                'Nenhum pasto cadastrado nesta propriedade.',
+                            botaoLabel: 'Criar pasto',
+                            onBotao: () async {
+                              await AppCoordinator.goToNovoPasto(
+                                context,
+                                propriedadeId: _propriedadeSelecionada!.id,
+                              );
+
+                              if (_propriedadeSelecionada != null) {
+                                final pastos = await ref
+                                    .read(pastoServiceProvider)
+                                    .listar(_propriedadeSelecionada!.id);
+
+                                if (!mounted) return;
+
+                                setState(() {
+                                  _pastos = pastos;
+                                });
+                              }
+                            },
+                          )
+                        else
+                          _BovDropdown<PastoModel>(
+                            value: _pastoDestino,
+                            hint: 'Selecionar pasto',
+
+                            items: _pastos
+                                .map(
+                                  (p) => DropdownMenuItem(
+                                    value: p,
+                                    child: Text(
+                                      p.nome,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+
+                            onChanged: (p) {
+                              setState(() {
+                                _pastoDestino = p;
+                              });
+                            },
+                          ),
+                      ],
+                    ],
                     const SizedBox(height: 24),
 
                     BovPrimaryButton(
                       label: 'Cadastrar Animal',
                       isLoading: isLoading,
                       onPressed: () {
+                        final pastoIdFinal = _usarRebanho
+                            ? _rebanhoSelecionado?.pastoId
+                            : _pastoDestino?.id;
+
+                        if (_usarRebanho && _rebanhoSelecionado == null) {
+                          showBovErrorSnackBar(
+                            context,
+                            'Selecione um rebanho.',
+                          );
+                          return;
+                        }
+
+                        if (!_usarRebanho && _pastoDestino == null) {
+                          showBovErrorSnackBar(context, 'Selecione um pasto.');
+                          return;
+                        }
+
                         ref
                             .read(animaisViewModelProvider.notifier)
                             .criar(
@@ -402,8 +589,10 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                               pesoAtual:
                                   double.tryParse(_pesoController.text) ?? 0.0,
                               dataNascimento: _dataNascimento,
-                              rebanhoId: _rebanhoController.text,
-                              pastoDestinoId: _pastoDestino?.id,
+                              rebanhoId: _usarRebanho
+                                  ? _rebanhoSelecionado?.id
+                                  : null,
+                              pastoDestinoId: pastoIdFinal!,
                             );
                       },
                     ),
@@ -426,10 +615,79 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
 }
 
 // =============================================================================
-// WIDGETS INTERNOS
+// CAIXA DE AVISO COM BOTÃO OPCIONAL
 // =============================================================================
 
-/// Dropdown estilizado no padrão BovManager.
+class _InfoBox extends StatelessWidget {
+  const _InfoBox({
+    required this.mensagem,
+    required this.botaoLabel,
+    required this.onBotao,
+  });
+
+  final String mensagem;
+  final String? botaoLabel;
+  final VoidCallback? onBotao;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              mensagem,
+              style: const TextStyle(
+                color: AppColors.text4,
+                fontSize: 13,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+          if (botaoLabel != null && onBotao != null) ...[
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: onBotao,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(8),
+                  // ignore: deprecated_member_use
+                  border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+                ),
+                child: Text(
+                  botaoLabel!,
+                  style: const TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'DM Sans',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// DROPDOWN ESTILIZADO
+// =============================================================================
+
 class _BovDropdown<T> extends StatelessWidget {
   const _BovDropdown({
     required this.value,
@@ -482,7 +740,10 @@ class _BovDropdown<T> extends StatelessWidget {
   }
 }
 
-/// Placeholder enquanto os dados carregam.
+// =============================================================================
+// SKELETON DE DROPDOWN
+// =============================================================================
+
 class _DropdownSkeleton extends StatelessWidget {
   const _DropdownSkeleton({required this.label});
 

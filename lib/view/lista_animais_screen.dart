@@ -3,6 +3,7 @@ import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/animal_model.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
+import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,7 +26,7 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final listaState = ref.watch(animaisListaProvider);
+    final propriedadeState = ref.watch(propriedadeSelecionadaProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -38,7 +39,6 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  BovBackButton(),
                   const Text(
                     'Animais',
                     style: TextStyle(
@@ -86,10 +86,11 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
 
             // ── Corpo ─────────────────────────────────────────────────────
             Expanded(
-              child: listaState.when(
+              child: propriedadeState.when(
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.accent),
                 ),
+
                 error: (e, _) => Center(
                   child: Text(
                     e.toString(),
@@ -99,46 +100,75 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
                     ),
                   ),
                 ),
-                data: (lista) {
-                  final filtrada = _busca.isEmpty
-                      ? lista
-                      : lista
-                            .where(
-                              (a) =>
-                                  a.nome.toLowerCase().contains(_busca) ||
-                                  a.brinco.toLowerCase().contains(_busca),
-                            )
-                            .toList();
 
-                  if (lista.isEmpty) return const _EmptyState();
+                data: (propriedade) {
+                  // Nenhuma propriedade cadastrada
+                  if (propriedade == null) {
+                    return const _SemPropriedadeState();
+                  }
 
-                  if (filtrada.isEmpty) {
-                    return Center(
+                  final listaState = ref.watch(animaisListaProvider);
+
+                  return listaState.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(color: AppColors.accent),
+                    ),
+
+                    error: (e, _) => Center(
                       child: Text(
-                        'Nenhum animal encontrado',
+                        e.toString(),
                         style: const TextStyle(
-                          color: AppColors.text4,
+                          color: AppColors.red,
                           fontFamily: 'DM Sans',
                         ),
                       ),
-                    );
-                  }
-
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                    itemCount: filtrada.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 1),
-                    itemBuilder: (context, i) => _AnimalItem(
-                      animal: filtrada[i],
-                      isFirst: i == 0,
-                      isLast: i == filtrada.length - 1,
-                      onTap: () {
-                        ref
-                            .read(animalEmVisualizacaoProvider.notifier)
-                            .abrir(filtrada[i]);
-                        AppCoordinator.goToDetalhesAnimal(context);
-                      },
                     ),
+
+                    data: (lista) {
+                      final filtrada = _busca.isEmpty
+                          ? lista
+                          : lista
+                                .where(
+                                  (a) =>
+                                      a.nome.toLowerCase().contains(_busca) ||
+                                      a.brinco.toLowerCase().contains(_busca),
+                                )
+                                .toList();
+
+                      if (lista.isEmpty) {
+                        return const _EmptyState();
+                      }
+
+                      if (filtrada.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Nenhum animal encontrado',
+                            style: TextStyle(
+                              color: AppColors.text4,
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                        itemCount: filtrada.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 1),
+                        itemBuilder: (context, i) => _AnimalItem(
+                          animal: filtrada[i],
+                          isFirst: i == 0,
+                          isLast: i == filtrada.length - 1,
+                          onTap: () {
+                            ref
+                                .read(animalEmVisualizacaoProvider.notifier)
+                                .abrir(filtrada[i]);
+
+                            AppCoordinator.goToDetalhesAnimal(context);
+                          },
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -307,6 +337,76 @@ class _EmptyState extends StatelessWidget {
             onPressed: () => AppCoordinator.goToNovoAnimal(context),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SemPropriedadeState extends StatelessWidget {
+  const _SemPropriedadeState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Icon(
+                Icons.home_work_outlined,
+                size: 32,
+                color: AppColors.text3,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            const Text(
+              'Nenhuma propriedade cadastrada',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            const Text(
+              'Cadastre uma propriedade para começar a gerenciar seus animais.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text4,
+                fontSize: 14,
+                height: 1.5,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: BovPrimaryButton(
+                label: 'Cadastrar propriedade',
+                onPressed: () {
+                  AppCoordinator.goToNovaPropriedade(context);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

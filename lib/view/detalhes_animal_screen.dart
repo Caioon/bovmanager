@@ -4,6 +4,7 @@ import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/animal_model.dart';
 import 'package:bov_manager/view/atualizar_historico_screen.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
+import 'package:bov_manager/viewmodels/historico_animal_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -37,8 +38,7 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
     final hoje = DateTime.now();
     int anos = hoje.year - dataNascimento.year;
     if (hoje.month < dataNascimento.month ||
-        (hoje.month == dataNascimento.month &&
-            hoje.day < dataNascimento.day)) {
+        (hoje.month == dataNascimento.month && hoje.day < dataNascimento.day)) {
       anos--;
     }
     return anos;
@@ -49,13 +49,23 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
     final animal = ref.watch(animalEmVisualizacaoProvider);
 
     if (animal == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final dataCadastro = DateFormat('MMM yyyy').format(animal.dataNascimento);
 
+    final historicos = ref.watch(historicoAnimalListaProvider).value;
+
+    String? rebanhoId;
+
+    if (historicos != null) {
+      for (final registro in historicos) {
+        if (registro.tipo != 'Pesagem') {
+          rebanhoId = registro.rebanhoDestinoId;
+          break;
+        }
+      }
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -165,8 +175,7 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
                       children: [
                         Expanded(
                           child: _MetricCard(
-                            value:
-                                '${animal.pesoAtual.toStringAsFixed(0)}kg',
+                            value: '${animal.pesoAtual.toStringAsFixed(0)}kg',
                             label: 'Peso Atual',
                             valueColor: AppColors.accent,
                           ),
@@ -198,11 +207,11 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
                             value: '#${animal.brinco}',
                             isFirst: true,
                           ),
+
                           _InfoRow(
                             icon: Icons.groups_outlined,
                             label: 'Rebanho',
-                            // TODO: resolver nome do rebanho a partir do rebanhoId
-                            value: animal.rebanhoId,
+                            value: rebanhoId ?? 'Sem rebanho',
                           ),
                           _InfoRow(
                             icon: Icons.calendar_today_rounded,
@@ -226,11 +235,13 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
 
                     const SizedBox(height: 10),
 
-                    // TODO: implementar tela de atualização de histórico
                     BovSecondaryButton(
                       label: 'Atualizar Histórico',
                       icon: Icons.edit_note_rounded,
-                      onPressed: () => showAtualizarHistoricoModal(context),
+                      onPressed: () => showAtualizarHistoricoModal(
+                        context,
+                        rebanhoId != null,
+                      ),
                     ),
                   ],
                 ),
@@ -422,12 +433,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        isFirst ? 14 : 10,
-        16,
-        isLast ? 14 : 10,
-      ),
+      padding: EdgeInsets.fromLTRB(16, isFirst ? 14 : 10, 16, isLast ? 14 : 10),
       decoration: BoxDecoration(
         border: isLast
             ? null
