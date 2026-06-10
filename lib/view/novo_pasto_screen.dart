@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class NovoPastoScreen extends ConsumerStatefulWidget {
-  const NovoPastoScreen({super.key});
+  const NovoPastoScreen({super.key, this.propriedadeId});
+
+  final String? propriedadeId;
 
   @override
   ConsumerState<NovoPastoScreen> createState() => _NovoPastoScreenState();
@@ -14,14 +16,39 @@ class NovoPastoScreen extends ConsumerStatefulWidget {
 class _NovoPastoScreenState extends ConsumerState<NovoPastoScreen> {
   final _nomeController = TextEditingController();
   final _areaController = TextEditingController();
+  final _limiteController = TextEditingController();
   final _descricaoController = TextEditingController();
+
+  bool _tentouSalvar = false;
+
+  bool get _nomeValido => _nomeController.text.trim().isNotEmpty;
+  bool get _areaValida => _areaController.text.trim().isNotEmpty;
+  bool get _limiteValido => _limiteController.text.trim().isNotEmpty;
 
   @override
   void dispose() {
     _nomeController.dispose();
     _areaController.dispose();
+    _limiteController.dispose();
     _descricaoController.dispose();
     super.dispose();
+  }
+
+  void _salvar() {
+    setState(() => _tentouSalvar = true);
+
+    if (!_nomeValido || !_areaValida || !_limiteValido) {
+      showBovErrorSnackBar(context, 'Preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    ref.read(pastosViewModelProvider.notifier).criar(
+          nome: _nomeController.text,
+          area: double.tryParse(_areaController.text) ?? 0.0,
+          descricao: _descricaoController.text,
+          limiteAnimais: int.tryParse(_limiteController.text),
+          propriedadeIdOverride: widget.propriedadeId,
+        );
   }
 
   @override
@@ -40,7 +67,6 @@ class _NovoPastoScreenState extends ConsumerState<NovoPastoScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -64,7 +90,6 @@ class _NovoPastoScreenState extends ConsumerState<NovoPastoScreen> {
               ),
             ),
 
-            // ── Formulário ────────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -72,26 +97,61 @@ class _NovoPastoScreenState extends ConsumerState<NovoPastoScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Nome ─────────────────────────────────────────────
-                    const BovFieldLabel(label: 'NOME DO PASTO'),
+                    const BovFieldLabel(label: 'NOME DO PASTO *'),
                     const SizedBox(height: 6),
                     BovTextField(
                       controller: _nomeController,
                       hintText: 'Ex: Pasto Norte A',
                       textInputAction: TextInputAction.next,
+                      errorBorder: _tentouSalvar && !_nomeValido,
+                      onChanged: (_) => setState(() {}),
                     ),
 
                     const SizedBox(height: 14),
 
-                    // ── Área ──────────────────────────────────────────────
-                    const BovFieldLabel(label: 'TAMANHO (HECTARES)'),
-                    const SizedBox(height: 6),
-                    BovTextField(
-                      controller: _areaController,
-                      hintText: '0.00',
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.next,
+                    // ── Área e Limite lado a lado ─────────────────────────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const BovFieldLabel(label: 'TAMANHO (HA) *'),
+                              const SizedBox(height: 6),
+                              BovTextField(
+                                controller: _areaController,
+                                hintText: '0.00',
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                textInputAction: TextInputAction.next,
+                                errorBorder: _tentouSalvar && !_areaValida,
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const BovFieldLabel(label: 'LIMITE ANIMAIS *'),
+                              const SizedBox(height: 6),
+                              BovTextField(
+                                controller: _limiteController,
+                                hintText: '0',
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.next,
+                                errorBorder: _tentouSalvar && !_limiteValido,
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 14),
@@ -110,14 +170,7 @@ class _NovoPastoScreenState extends ConsumerState<NovoPastoScreen> {
                     BovPrimaryButton(
                       label: 'Salvar Pasto',
                       isLoading: isLoading,
-                      onPressed: () {
-                        ref.read(pastosViewModelProvider.notifier).criar(
-                          nome: _nomeController.text,
-                          area:
-                              double.tryParse(_areaController.text) ?? 0.0,
-                          descricao: _descricaoController.text,
-                        );
-                      },
+                      onPressed: _salvar,
                     ),
 
                     const SizedBox(height: 10),

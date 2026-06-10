@@ -3,7 +3,6 @@ import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
-import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +11,7 @@ class ListaPastosScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final listaState = ref.watch(pastosListaProvider);
+    final listaState = ref.watch(pastosListaPropEmVisualizacaoProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -82,7 +81,7 @@ class ListaPastosScreen extends ConsumerWidget {
                   return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                     itemCount: lista.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 1),
+                    separatorBuilder: (_, _) => const SizedBox(height: 1),
                     itemBuilder: (context, i) => _PastoItem(
                       pasto: lista[i],
                       isFirst: i == 0,
