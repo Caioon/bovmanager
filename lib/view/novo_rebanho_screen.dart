@@ -1,14 +1,16 @@
+import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
-import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
-import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
+import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class NovoRebanhoScreen extends ConsumerStatefulWidget {
-  const NovoRebanhoScreen({super.key});
+  const NovoRebanhoScreen({super.key, this.propriedadeId});
+
+  final String? propriedadeId;
 
   @override
   ConsumerState<NovoRebanhoScreen> createState() => _NovoRebanhoScreenState();
@@ -16,7 +18,6 @@ class NovoRebanhoScreen extends ConsumerStatefulWidget {
 
 class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
   final _nomeController = TextEditingController();
-
   PastoModel? _pastoSelecionado;
   List<PastoModel> _pastos = [];
   bool _carregandoPastos = true;
@@ -28,13 +29,37 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
   }
 
   Future<void> _carregarPastos() async {
+    setState(() => _carregandoPastos = true);
+
     try {
-      final pastos = await ref.read(pastosListaProvider.future);
-      if (mounted) setState(() => _pastos = pastos);
+      if (widget.propriedadeId == null) {
+        setState(() {
+          _pastos = [];
+        });
+        return;
+      }
+
+      final pastos = await ref
+          .read(pastoServiceProvider)
+          .listar(widget.propriedadeId!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _pastos = pastos;
+      });
     } catch (_) {
-      // Lista permanece vazia; o dropdown mostrará hint de erro
+      if (!mounted) return;
+
+      setState(() {
+        _pastos = [];
+      });
     } finally {
-      if (mounted) setState(() => _carregandoPastos = false);
+      if (mounted) {
+        setState(() {
+          _carregandoPastos = false;
+        });
+      }
     }
   }
 
@@ -92,7 +117,7 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Nome do lote ──────────────────────────────────────
-                    const BovFieldLabel(label: 'NOME DO LOTE'),
+                    const BovFieldLabel(label: 'NOME DO REBANHO'),
                     const SizedBox(height: 6),
                     BovTextField(
                       controller: _nomeController,
@@ -108,7 +133,18 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                     _carregandoPastos
                         ? _DropdownSkeleton()
                         : _pastos.isEmpty
-                        ? _DropdownVazio()
+                        ? _InfoBox(
+                            mensagem: 'Nenhum pasto cadastrado.',
+                            botaoLabel: 'Criar pasto',
+                            onBotao: () async {
+                              await AppCoordinator.goToNovoPasto(
+                                context,
+                                propriedadeId: widget.propriedadeId,
+                              );
+
+                              await _carregarPastos();
+                            },
+                          )
                         : _BovDropdown<PastoModel>(
                             value: _pastoSelecionado,
                             items: _pastos,
@@ -117,13 +153,20 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                             onChanged: (p) =>
                                 setState(() => _pastoSelecionado = p),
                           ),
-
                     const SizedBox(height: 28),
 
                     BovPrimaryButton(
                       label: 'Criar Rebanho',
                       isLoading: isLoading,
                       onPressed: () {
+                        if (_nomeController.text.trim().isEmpty) {
+                          showBovErrorSnackBar(
+                            context,
+                            'Informe o nome do lote.',
+                          );
+                          return;
+                        }
+
                         if (_pastoSelecionado == null) {
                           showBovErrorSnackBar(
                             context,
@@ -131,11 +174,13 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                           );
                           return;
                         }
+
                         ref
                             .read(rebanhoViewModelProvider.notifier)
                             .criar(
                               nome: _nomeController.text,
                               pastoId: _pastoSelecionado!.id,
+                              propriedadeId: widget.propriedadeId,
                             );
                       },
                     ),
@@ -267,6 +312,7 @@ class _DropdownSkeleton extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _DropdownVazio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -290,6 +336,78 @@ class _DropdownVazio extends StatelessWidget {
               fontFamily: 'DM Sans',
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// INFO BOX
+// =============================================================================
+
+class _InfoBox extends StatelessWidget {
+  const _InfoBox({
+    required this.mensagem,
+    required this.botaoLabel,
+    required this.onBotao,
+  });
+
+  final String mensagem;
+  final String? botaoLabel;
+  final VoidCallback? onBotao;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              mensagem,
+              style: const TextStyle(
+                color: AppColors.text4,
+                fontSize: 13,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+
+          if (botaoLabel != null && onBotao != null) ...[
+            const SizedBox(width: 10),
+
+            GestureDetector(
+              onTap: onBotao,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(8),
+                  // ignore: deprecated_member_use
+                  border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+                ),
+                child: Text(
+                  botaoLabel!,
+                  style: const TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'DM Sans',
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

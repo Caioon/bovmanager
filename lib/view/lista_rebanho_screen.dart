@@ -2,7 +2,6 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/rebanho_model.dart';
-import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
@@ -30,7 +29,7 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
     final propriedadeId = ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
     if (propriedadeId.isEmpty) return {};
     try {
-      final pastos = await ref.read(pastosListaProvider.future);
+      final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
       return {for (final p in pastos) p.id: p.nome};
     } catch (_) {
       return {};
@@ -39,7 +38,7 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final listaState = ref.watch(rebanhoListaProvider);
+    final rebanhoListaState = ref.watch(rebanhoListaProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -68,7 +67,14 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
                     ],
                   ),
                   GestureDetector(
-                    onTap: () => AppCoordinator.goToNovoRebanho(context),
+                    onTap: () {
+                      final propriedadeId =
+                          ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
+                      AppCoordinator.goToNovoRebanho(
+                        context,
+                        propriedadeId: propriedadeId,
+                      );
+                    },
                     child: Container(
                       width: 36,
                       height: 36,
@@ -90,7 +96,7 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
 
             // ── Corpo ─────────────────────────────────────────────────────
             Expanded(
-              child: listaState.when(
+              child: rebanhoListaState.when(
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.accent),
                 ),
@@ -164,6 +170,7 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
     WidgetRef ref,
     RebanhoModel rebanho,
   ) {
+
     ref.read(rebanhoEmVisualizacaoProvider.notifier).abrir(rebanho);
 
     showModalBottomSheet(
@@ -448,11 +455,11 @@ class _RebanhoItem extends StatelessWidget {
 // EMPTY STATE
 // =============================================================================
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
@@ -494,7 +501,14 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 28),
           BovPrimaryButton(
             label: 'Criar Rebanho',
-            onPressed: () => AppCoordinator.goToNovoRebanho(context),
+            onPressed: () {
+              final propriedadeId =
+                  ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
+              AppCoordinator.goToNovoRebanho(
+                context,
+                propriedadeId: propriedadeId,
+              );
+            },
           ),
         ],
       ),

@@ -2,7 +2,6 @@ import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
-import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,9 +26,8 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
   }
 
   Future<void> _carregarPastos() async {
-    final propriedadeId = ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
     try {
-      final pastos = await ref.read(pastosListaProvider.future);
+      final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
       if (mounted) setState(() => _pastos = pastos);
     } catch (_) {
       // lista permanece vazia
@@ -274,9 +272,32 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
 
                     const SizedBox(height: 28),
 
+                    const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: AppColors.text4,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Todos os animais referentes ao pasto registrarão um histórico de movimentação para o novo pasto',
+                            style: TextStyle(
+                              color: AppColors.text4,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 28),
+
                     // ── Confirmar ─────────────────────────────────────────
                     BovPrimaryButton(
-                      label: 'Confirmar Movimentação',
+                      label: 'Confirmar movimentação',
                       isLoading: isLoading,
                       onPressed: rebanho == null || _pastoDestino == null
                           ? null
@@ -285,9 +306,11 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                                   .read(rebanhoViewModelProvider.notifier)
                                   .mover(
                                     rebanhoId: rebanho.id,
+                                    antigoPastoId: rebanho.pastoId,
                                     novoPastoId: _pastoDestino!.id,
                                   );
                             },
+
                     ),
 
                     const SizedBox(height: 10),
