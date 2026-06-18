@@ -11,6 +11,7 @@ class TarefaModel {
   final StatusTarefa status;
   final String propriedadeId;
   final String usuarioId;
+  final int? horaExecucaoMinutos; // minutos desde meia-noite, null = sem horário
 
   TarefaModel({
     required this.id,
@@ -20,7 +21,44 @@ class TarefaModel {
     required this.status,
     required this.propriedadeId,
     required this.usuarioId,
+    this.horaExecucaoMinutos,
   });
+
+  /// Retorna o DateTime exato da execução quando horaExecucaoMinutos está definido.
+  DateTime? get dataHoraExecucao {
+    if (horaExecucaoMinutos == null) return null;
+    return DateTime(
+      dataExecucao.year,
+      dataExecucao.month,
+      dataExecucao.day,
+      horaExecucaoMinutos! ~/ 60,
+      horaExecucaoMinutos! % 60,
+    );
+  }
+
+  TarefaModel copyWith({
+    String? id,
+    String? titulo,
+    String? descricao,
+    DateTime? dataExecucao,
+    StatusTarefa? status,
+    String? propriedadeId,
+    String? usuarioId,
+    int? horaExecucaoMinutos,
+    bool clearHora = false, // true para setar horaExecucaoMinutos como null
+  }) {
+    return TarefaModel(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      descricao: descricao ?? this.descricao,
+      dataExecucao: dataExecucao ?? this.dataExecucao,
+      status: status ?? this.status,
+      propriedadeId: propriedadeId ?? this.propriedadeId,
+      usuarioId: usuarioId ?? this.usuarioId,
+      horaExecucaoMinutos:
+          clearHora ? null : (horaExecucaoMinutos ?? this.horaExecucaoMinutos),
+    );
+  }
 
   factory TarefaModel.fromMap(
     Map<String, dynamic> map,
@@ -37,6 +75,7 @@ class TarefaModel {
       ),
       propriedadeId: map['propriedadeId'] ?? '',
       usuarioId: map['usuarioId'] ?? '',
+      horaExecucaoMinutos: map['horaExecucaoMinutos'] as int?,
     );
   }
 
@@ -48,6 +87,7 @@ class TarefaModel {
       'status': status.name,
       'propriedadeId': propriedadeId,
       'usuarioId': usuarioId,
+      'horaExecucaoMinutos': horaExecucaoMinutos,
     };
   }
 }
