@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+other_files/
 
 # IntelliJ related
 *.iml
@@ -43,3 +44,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase
+**/serviceAccountKey.json
+**/firebase-adminsdk*.json
+*.pem
+.env
+.env.*
+
+# Android secrets
+android/key.properties
+*.jks
+*.keystore
