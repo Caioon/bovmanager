@@ -79,17 +79,6 @@ https://console.firebase.google.com/
 - Um detalhe importante: não é necessário criar as collections diretamente via site, é só criar no aplicativo,
 e quando a aplicação acessar o backend via api a collection será criada.
 
-# ATENÇÃO
-
-- O firestore ja está em modo produção. Ou seja: por padrão ele não permite nenhum read/write:
-    allow read, write: if false;
-
-- A regra foi alterada para:
-    allow read, write: if true;
-
-- Para testar a aplicação não tem problema, mas jamais coloque isso em produção. Mude para alguma regra de autenticação. Exemplo:
-    allow read, write: if request.auth.uid == resource.data.usuarioId;
-
 # Como rodar o projeto
 
 - Comando:
