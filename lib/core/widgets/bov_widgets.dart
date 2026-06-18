@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 // BOV LOGO
 // =============================================================================
 
-/// Logo "BOVmanager" com "BOV" em verde e "MANAGER" em branco.
 class BovLogo extends StatelessWidget {
   const BovLogo({super.key});
 
@@ -57,7 +56,6 @@ class BovLogo extends StatelessWidget {
 // FIELD LABEL
 // =============================================================================
 
-/// Label de campo no estilo uppercase do mockup.
 class BovFieldLabel extends StatelessWidget {
   const BovFieldLabel({super.key, required this.label});
 
@@ -82,7 +80,6 @@ class BovFieldLabel extends StatelessWidget {
 // TEXT FIELD
 // =============================================================================
 
-/// Campo de texto padrão do BovManager.
 class BovTextField extends StatelessWidget {
   const BovTextField({
     super.key,
@@ -91,9 +88,10 @@ class BovTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.suffixIcon,
-    this.prefixIcon,    // ← novo
+    this.prefixIcon,
     this.textInputAction,
-    this.onChanged,     // ← novo
+    this.onChanged,
+    this.errorBorder = false, // opcional, padrão false — não afeta usos existentes
   });
 
   final TextEditingController controller;
@@ -101,18 +99,24 @@ class BovTextField extends StatelessWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
-  final Widget? prefixIcon;           // ← novo
+  final Widget? prefixIcon;
   final TextInputAction? textInputAction;
-  final ValueChanged<String>? onChanged; // ← novo
+  final ValueChanged<String>? onChanged;
+  final bool errorBorder;
 
   @override
   Widget build(BuildContext context) {
+    // Quando errorBorder é true, a borda usa AppColors.red no lugar das cores padrão.
+    // Quando false (padrão), o comportamento é idêntico ao original.
+    final borderColor = errorBorder ? AppColors.red : AppColors.border;
+    final focusedBorderColor = errorBorder ? AppColors.red : AppColors.accent;
+
     return TextField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
-      onChanged: onChanged,           // ← novo
+      onChanged: onChanged,
       style: const TextStyle(
         color: AppColors.text,
         fontSize: 15,
@@ -127,20 +131,21 @@ class BovTextField extends StatelessWidget {
         ),
         filled: true,
         fillColor: AppColors.card,
-        prefixIcon: prefixIcon,       // ← novo
+        prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.accent),
+          borderSide: BorderSide(color: focusedBorderColor),
         ),
       ),
     );
@@ -151,7 +156,6 @@ class BovTextField extends StatelessWidget {
 // BUTTONS
 // =============================================================================
 
-/// Botão primário verde (Entrar, Criar Conta, etc).
 class BovPrimaryButton extends StatelessWidget {
   const BovPrimaryButton({
     super.key,
@@ -172,6 +176,7 @@ class BovPrimaryButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: TextButton.styleFrom(
           backgroundColor: AppColors.accent,
+          // ignore: deprecated_member_use
           disabledBackgroundColor: AppColors.accent.withOpacity(0.5),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -201,7 +206,6 @@ class BovPrimaryButton extends StatelessWidget {
   }
 }
 
-/// Botão secundário (borda escura, fundo card).
 class BovSecondaryButton extends StatelessWidget {
   const BovSecondaryButton({
     super.key,
@@ -251,7 +255,6 @@ class BovSecondaryButton extends StatelessWidget {
   }
 }
 
-/// Botão de perigo/destrutivo (vermelho translúcido).
 class BovDangerButton extends StatelessWidget {
   const BovDangerButton({
     super.key,
@@ -316,7 +319,6 @@ class BovDangerButton extends StatelessWidget {
 // BACK BUTTON
 // =============================================================================
 
-/// Botão de voltar no estilo card do mockup.
 class BovBackButton extends StatelessWidget {
   const BovBackButton({super.key, this.onTap});
 
@@ -367,4 +369,402 @@ void showBovErrorSnackBar(BuildContext context, String message) {
       margin: const EdgeInsets.all(16),
     ),
   );
+}
+
+// =============================================================================
+// CONFIRMAÇÃO DE COORDENADA
+// =============================================================================
+
+class BovConfirmacaoCoordenadaDialog extends StatelessWidget {
+  const BovConfirmacaoCoordenadaDialog({
+    super.key,
+    required this.lat,
+    required this.lng,
+    this.cidadeProxima,
+  });
+
+  final double lat;
+  final double lng;
+  final String? cidadeProxima;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Confirmar ponto central',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Deseja salvar o ponto central da propriedade localizado nas coordenadas atuais?',
+              style: TextStyle(
+                color: AppColors.text4,
+                fontSize: 13,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+            const SizedBox(height: 20),
+            _CoordRow(label: 'Latitude', value: lat.toStringAsFixed(6)),
+            const SizedBox(height: 8),
+            _CoordRow(label: 'Longitude', value: lng.toStringAsFixed(6)),
+            const SizedBox(height: 8),
+            _CoordRow(
+              label: 'Próximo de',
+              value: cidadeProxima ?? 'Não identificado',
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: BovSecondaryButton(
+                    label: 'Cancelar',
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: BovPrimaryButton(
+                    label: 'Salvar',
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CoordRow extends StatelessWidget {
+  const _CoordRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            color: AppColors.text4,
+            fontSize: 13,
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'DM Sans',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<TimeOfDay?> showBovTimePicker({
+  required BuildContext context,
+  int initialHour = 8,
+  int initialMinute = 0,
+}) {
+  return showModalBottomSheet<TimeOfDay>(
+    context: context,
+    backgroundColor: AppColors.card,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _BovTimePickerSheet(
+      initialHour: initialHour,
+      initialMinute: initialMinute,
+    ),
+  );
+}
+
+class _BovTimePickerSheet extends StatefulWidget {
+  const _BovTimePickerSheet({
+    required this.initialHour,
+    required this.initialMinute,
+  });
+
+  final int initialHour;
+  final int initialMinute;
+
+  @override
+  State<_BovTimePickerSheet> createState() => _BovTimePickerSheetState();
+}
+
+class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
+  static const _itemHeight = 56.0;
+  static const _visibleItems = 3; // quantos itens ficam visíveis por coluna
+
+  late int _selectedHour;
+  late int _selectedMinute;
+
+  late final FixedExtentScrollController _hourCtrl;
+  late final FixedExtentScrollController _minuteCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedHour = widget.initialHour;
+    _selectedMinute = widget.initialMinute;
+
+    // Começamos em um offset grande para simular scroll circular
+    _hourCtrl = FixedExtentScrollController(
+      initialItem: _initialOffset(24) + widget.initialHour,
+    );
+    _minuteCtrl = FixedExtentScrollController(
+      initialItem: _initialOffset(60) + widget.initialMinute,
+    );
+  }
+
+  @override
+  void dispose() {
+    _hourCtrl.dispose();
+    _minuteCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Offset inicial suficientemente grande para scroll "infinito" sem chegar ao topo
+  int _initialOffset(int total) => total * 500;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Alça
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            const Text(
+              'Selecionar horário',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Colunas de hora e minuto ───────────────────────────────────
+            SizedBox(
+              height: _itemHeight * _visibleItems,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Faixa de destaque do item central
+                  Positioned(
+                    top: _itemHeight,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: _itemHeight,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.accent),
+                      ),
+                    ),
+                  ),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Coluna de horas
+                      _ScrollColumn(
+                        controller: _hourCtrl,
+                        total: 24,
+                        itemHeight: _itemHeight,
+                        onSelected: (v) => setState(() => _selectedHour = v),
+                        label: 'horas',
+                      ),
+
+                      // Separador
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          ':',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                      ),
+
+                      // Coluna de minutos
+                      _ScrollColumn(
+                        controller: _minuteCtrl,
+                        total: 60,
+                        itemHeight: _itemHeight,
+                        onSelected: (v) => setState(() => _selectedMinute = v),
+                        label: 'minutos',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Labels abaixo das colunas
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Center(
+                      child: Text(
+                        'horas',
+                        style: const TextStyle(
+                          color: AppColors.text4,
+                          fontSize: 11,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 32), // espaço do ":"
+                  SizedBox(
+                    width: 80,
+                    child: Center(
+                      child: Text(
+                        'minutos',
+                        style: const TextStyle(
+                          color: AppColors.text4,
+                          fontSize: 11,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Botões ────────────────────────────────────────────────────
+            BovPrimaryButton(
+              label: "Confirmar",
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).pop(TimeOfDay(hour: _selectedHour, minute: _selectedMinute));
+              },
+            ),
+            const SizedBox(height: 10),
+            BovSecondaryButton(
+              label: "Cancelar",
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// COLUNA DE SCROLL CIRCULAR
+// =============================================================================
+
+class _ScrollColumn extends StatefulWidget {
+  const _ScrollColumn({
+    required this.controller,
+    required this.total,
+    required this.itemHeight,
+    required this.onSelected,
+    required this.label,
+  });
+
+  final FixedExtentScrollController controller;
+  final int total;
+  final double itemHeight;
+  final ValueChanged<int> onSelected;
+  final String label;
+
+  @override
+  State<_ScrollColumn> createState() => _ScrollColumnState();
+}
+
+class _ScrollColumnState extends State<_ScrollColumn> {
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.controller.initialItem;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 80,
+      child: ListWheelScrollView.useDelegate(
+        controller: widget.controller,
+        itemExtent: widget.itemHeight,
+        perspective: 0.003,
+        diameterRatio: 2.0,
+        physics: const FixedExtentScrollPhysics(),
+        onSelectedItemChanged: (index) {
+          setState(() => _currentIndex = index);
+          widget.onSelected(index % widget.total);
+        },
+        childDelegate: ListWheelChildBuilderDelegate(
+          builder: (context, index) {
+            final value = index % widget.total;
+            final isSelected = index == _currentIndex;
+
+            return Center(
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 150),
+                style: TextStyle(
+                  color: isSelected ? AppColors.text : AppColors.text4,
+                  fontSize: isSelected ? 26 : 20,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  fontFamily: 'DM Sans',
+                ),
+                child: Text(value.toString().padLeft(2, '0')),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }

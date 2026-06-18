@@ -1,23 +1,30 @@
+import 'package:bov_manager/view/alterar_cpf_screen.dart';
+import 'package:bov_manager/view/alterar_email_screen.dart';
+import 'package:bov_manager/view/alterar_nome_screen.dart';
+import 'package:bov_manager/view/alterar_senha_screen.dart';
 import 'package:bov_manager/view/cadastro_screen.dart';
 import 'package:bov_manager/view/dashboard_screen.dart';
 import 'package:bov_manager/view/detalhes_animal_screen.dart';
+import 'package:bov_manager/view/detalhes_perfil_screen.dart';
 import 'package:bov_manager/view/detalhes_propriedade_screen.dart';
 import 'package:bov_manager/view/historico_animal_screen.dart';
-import 'package:bov_manager/view/home_screen.dart';
 import 'package:bov_manager/view/lista_animais_screen.dart';
 import 'package:bov_manager/view/lista_pastos_screen.dart';
 import 'package:bov_manager/view/lista_rebanho_screen.dart';
+import 'package:bov_manager/view/lista_tarefas_screen.dart';
 import 'package:bov_manager/view/login_screen.dart';
+import 'package:bov_manager/view/mapa_configuracao_screen.dart';
+import 'package:bov_manager/view/mapa_screen.dart';
 import 'package:bov_manager/view/mover_rebanho_screen.dart';
 import 'package:bov_manager/view/nova_propriedade_screen.dart';
 import 'package:bov_manager/view/novo_animal_screen.dart';
 import 'package:bov_manager/view/novo_pasto_screen.dart';
 import 'package:bov_manager/view/novo_rebanho_screen.dart';
+import 'package:bov_manager/view/perfil_screen.dart';
 import 'package:bov_manager/view/propriedade_screen.dart';
+import 'package:bov_manager/view/tarefa_screen.dart';
 import 'package:flutter/material.dart';
 
-/// Centralizador de navegação do BovManager.
-/// Todos os pushes e transições de tela passam por aqui.
 abstract class AppCoordinator {
   // =========================
   // HELPER
@@ -41,7 +48,24 @@ abstract class AppCoordinator {
   // =========================
   // AUTH
   // =========================
-  static void goToLogin(BuildContext context) {
+
+  /// Navega para o login limpando toda a pilha de navegação.
+  ///
+  /// [onBeforeNavigate] é executado antes da navegação — use para cancelar
+  /// notificações no logout:
+  /// ```dart
+  /// AppCoordinator.goToLogin(
+  ///   context,
+  ///   onBeforeNavigate: () =>
+  ///     ref.read(notificationServiceProvider).cancelarTodasNotificacoes(),
+  /// );
+  /// ```
+  static Future<void> goToLogin(
+    BuildContext context, {
+    Future<void> Function()? onBeforeNavigate,
+  }) async {
+    await onBeforeNavigate?.call();
+    if (!context.mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       _slideRoute(const LoginScreen()),
@@ -56,12 +80,8 @@ abstract class AppCoordinator {
   // =========================
   // HOME
   // =========================
-  static void goToHome(BuildContext context) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      _slideRoute(const HomeScreen()),
-      (route) => false,
-    );
+  static void goToPerfil(BuildContext context) {
+    Navigator.push(context, _slideRoute(const PerfilScreen()));
   }
 
   // =========================
@@ -109,19 +129,91 @@ abstract class AppCoordinator {
     Navigator.push(context, _slideRoute(const ListaPastosScreen()));
   }
 
-  static void goToNovoPasto(BuildContext context) {
-    Navigator.push(context, _slideRoute(const NovoPastoScreen()));
+  static Future<void> goToNovoPasto(
+    BuildContext context, {
+    String? propriedadeId,
+  }) {
+    return Navigator.push(
+      context,
+      _slideRoute(NovoPastoScreen(propriedadeId: propriedadeId)),
+    );
   }
 
   static void goToListaRebanhos(BuildContext context) {
     Navigator.push(context, _slideRoute(const ListaRebanhoScreen()));
   }
 
-  static void goToNovoRebanho(BuildContext context) {
-    Navigator.push(context, _slideRoute(const NovoRebanhoScreen()));
+  static Future<void> goToNovoRebanho(
+    BuildContext context, {
+    String? propriedadeId,
+  }) {
+    return Navigator.push(
+      context,
+      _slideRoute(NovoRebanhoScreen(propriedadeId: propriedadeId)),
+    );
   }
 
   static void goToMoverRebanho(BuildContext context) {
     Navigator.push(context, _slideRoute(const MoverRebanhoScreen()));
+  }
+
+  static void goToNovaTarefa(BuildContext context) {
+    Navigator.push(context, _slideRoute(const NovaTarefaScreen()));
+  }
+
+  static void goToListaTarefas(BuildContext context) {
+    Navigator.push(context, _slideRoute(const ListaTarefasScreen()));
+  }
+
+  static void goToDetalhesPerfil(BuildContext context) {
+    Navigator.push(context, _slideRoute(const DetalhesPerfilScreen()));
+  }
+
+  static void goToMapa(BuildContext context) {
+    Navigator.push(context, _slideRoute(const MapaScreen()));
+  }
+
+  static void goToConfigurarMapa(BuildContext context) {
+    Navigator.push(context, _slideRoute(const MapaConfiguracaoScreen()));
+  }
+
+  // =========================
+  // EDIÇÃO DE PERFIL
+  // =========================
+  static void goToAlterarNome(
+    BuildContext context, {
+    required String nomeAtual,
+  }) {
+    Navigator.push(
+      context,
+      _slideRoute(AlterarNomeScreen(nomeAtual: nomeAtual)),
+    );
+  }
+
+  static void goToAlterarEmail(
+    BuildContext context, {
+    required String emailAtual,
+    required String senhaAtual,
+  }) {
+    Navigator.push(
+      context,
+      _slideRoute(
+        AlterarEmailScreen(emailAtual: emailAtual, senhaAtual: senhaAtual),
+      ),
+    );
+  }
+
+  static void goToAlterarCpf(BuildContext context, {required String cpfAtual}) {
+    Navigator.push(context, _slideRoute(AlterarCpfScreen(cpfAtual: cpfAtual)));
+  }
+
+  static void goToAlterarSenha(
+    BuildContext context, {
+    required String senhaAtual,
+  }) {
+    Navigator.push(
+      context,
+      _slideRoute(AlterarSenhaScreen(senhaAtual: senhaAtual)),
+    );
   }
 }
