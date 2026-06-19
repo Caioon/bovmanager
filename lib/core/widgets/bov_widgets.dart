@@ -482,6 +482,25 @@ class _CoordRow extends StatelessWidget {
   }
 }
 
+// =============================================================================
+// BOV TIME PICKER — picker de horário customizado com scroll circular
+// =============================================================================
+//
+// Bottom sheet com duas colunas de scroll circular (horas 0–23, minutos 0–59,
+// sem segundos). O item central de cada coluna é o selecionado, destacado
+// com fundo accentBg. Substitui o showTimePicker nativo em tarefa_screen.dart
+// e em _EditarDataHoraTarefaSheet (lista_tarefas_screen.dart).
+//
+// Uso:
+//   final picked = await showBovTimePicker(
+//     context: context,
+//     initialHour: 8,
+//     initialMinute: 30,
+//   );
+//   if (picked != null) setState(() => _horaExecucao = picked);
+//
+// Retorna TimeOfDay? — null se o usuário cancelar.
+
 Future<TimeOfDay?> showBovTimePicker({
   required BuildContext context,
   int initialHour = 8,
@@ -605,12 +624,11 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Coluna de horas
-                      _ScrollColumn(
+                      _BovTimePickerColumn(
                         controller: _hourCtrl,
                         total: 24,
                         itemHeight: _itemHeight,
                         onSelected: (v) => setState(() => _selectedHour = v),
-                        label: 'horas',
                       ),
 
                       // Separador
@@ -628,12 +646,12 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
                       ),
 
                       // Coluna de minutos
-                      _ScrollColumn(
+                      _BovTimePickerColumn(
                         controller: _minuteCtrl,
                         total: 60,
                         itemHeight: _itemHeight,
-                        onSelected: (v) => setState(() => _selectedMinute = v),
-                        label: 'minutos',
+                        onSelected: (v) =>
+                            setState(() => _selectedMinute = v),
                       ),
                     ],
                   ),
@@ -642,8 +660,8 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
             ),
 
             // Labels abaixo das colunas
-            Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 24),
+            const Padding(
+              padding: EdgeInsets.only(top: 8, bottom: 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -652,7 +670,7 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
                     child: Center(
                       child: Text(
                         'horas',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.text4,
                           fontSize: 11,
                           fontFamily: 'DM Sans',
@@ -660,13 +678,13 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 32), // espaço do ":"
+                  SizedBox(width: 32), // espaço do ":"
                   SizedBox(
                     width: 80,
                     child: Center(
                       child: Text(
                         'minutos',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.text4,
                           fontSize: 11,
                           fontFamily: 'DM Sans',
@@ -678,18 +696,18 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
               ),
             ),
 
-            // ── Botões ────────────────────────────────────────────────────
+            // ── Botões (reutiliza os componentes do design system) ────────
             BovPrimaryButton(
-              label: "Confirmar",
+              label: 'Confirmar',
               onPressed: () {
-                Navigator.of(
-                  context,
-                ).pop(TimeOfDay(hour: _selectedHour, minute: _selectedMinute));
+                Navigator.of(context).pop(
+                  TimeOfDay(hour: _selectedHour, minute: _selectedMinute),
+                );
               },
             ),
             const SizedBox(height: 10),
             BovSecondaryButton(
-              label: "Cancelar",
+              label: 'Cancelar',
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -700,29 +718,27 @@ class _BovTimePickerSheetState extends State<_BovTimePickerSheet> {
 }
 
 // =============================================================================
-// COLUNA DE SCROLL CIRCULAR
+// COLUNA DE SCROLL CIRCULAR DO BOV TIME PICKER
 // =============================================================================
 
-class _ScrollColumn extends StatefulWidget {
-  const _ScrollColumn({
+class _BovTimePickerColumn extends StatefulWidget {
+  const _BovTimePickerColumn({
     required this.controller,
     required this.total,
     required this.itemHeight,
     required this.onSelected,
-    required this.label,
   });
 
   final FixedExtentScrollController controller;
   final int total;
   final double itemHeight;
   final ValueChanged<int> onSelected;
-  final String label;
 
   @override
-  State<_ScrollColumn> createState() => _ScrollColumnState();
+  State<_BovTimePickerColumn> createState() => _BovTimePickerColumnState();
 }
 
-class _ScrollColumnState extends State<_ScrollColumn> {
+class _BovTimePickerColumnState extends State<_BovTimePickerColumn> {
   late int _currentIndex;
 
   @override

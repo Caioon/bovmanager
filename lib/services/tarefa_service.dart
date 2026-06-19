@@ -143,6 +143,7 @@ class TarefaService {
     required DateTime novaData,
     required String titulo,
     int? horaExecucaoMinutos,
+    bool clearHora = false,
   }) async {
     if (propriedadeId.isEmpty || tarefaId.isEmpty) {
       throw Exception('IDs inválidos.');
@@ -151,6 +152,8 @@ class TarefaService {
       propriedadeId: propriedadeId,
       tarefaId: tarefaId,
       novaData: novaData,
+      horaExecucaoMinutos: horaExecucaoMinutos,
+      clearHora: clearHora,
     );
 
     if (await _notificacoesAtivas()) {
@@ -164,7 +167,7 @@ class TarefaService {
           status: StatusTarefa.pendente,
           propriedadeId: propriedadeId,
           usuarioId: '',
-          horaExecucaoMinutos: horaExecucaoMinutos,
+          horaExecucaoMinutos: clearHora ? null : horaExecucaoMinutos,
         ),
       );
     }

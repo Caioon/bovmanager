@@ -114,6 +114,7 @@ class TarefasViewModel extends _$TarefasViewModel {
     required DateTime novaData,
     required String titulo,
     int? horaExecucaoMinutos,
+    bool clearHora = false,
   }) async {
     state = const AsyncLoading();
     try {
@@ -123,6 +124,7 @@ class TarefasViewModel extends _$TarefasViewModel {
         novaData: novaData,
         titulo: titulo,
         horaExecucaoMinutos: horaExecucaoMinutos,
+        clearHora: clearHora,
       );
       state = const AsyncData(null);
     } catch (e, st) {

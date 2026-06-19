@@ -85,6 +85,14 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
       builder: (_) => _EditarDataHoraTarefaSheet(
         tarefa: tarefa,
         onSalvar: (novaData, horaExecucaoMinutos, clearHora) {
+          // BUGFIX: clearHora estava sendo calculado no modal mas descartado
+          // aqui — o adiar() do viewmodel/service/repository não tinha esse
+          // parâmetro, e o método atualizarData() do repository nem gravava
+          // horaExecucaoMinutos no Firestore. Resultado: o horário escolhido
+          // (ou removido) ao adiar nunca era persistido — só era usado para
+          // reagendar a notificação local, por isso a UI nunca refletia a
+          // mudança. Corrigido em tarefa_viewmodel.dart, tarefa_service.dart
+          // e tarefa_repository.dart (atualizarData).
           ref
               .read(tarefasViewModelProvider.notifier)
               .adiar(
@@ -92,6 +100,7 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
                 novaData: novaData,
                 titulo: tarefa.titulo,
                 horaExecucaoMinutos: horaExecucaoMinutos,
+                clearHora: clearHora,
               );
         },
       ),
@@ -335,7 +344,7 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
                         ),
                       ),
 
-                      SizedBox(height: 10),
+                      const SizedBox(height: 10),
 
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -349,12 +358,12 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.info_outline,
                               color: AppColors.text4,
                               size: 18,
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Tarefas e notificações são vinculadas à propriedade selecionada'
@@ -751,6 +760,12 @@ class _EditarDataHoraTarefaSheetState
     if (picked != null) setState(() => _dataExecucao = picked);
   }
 
+  // BUGFIX: antes este método só era chamado quando _horaExecucao != null
+  // (o onTap do container ficava `null` quando não havia horário ainda),
+  // então era impossível abrir o picker para DEFINIR um horário pela
+  // primeira vez tocando no campo — só o botão "+" lateral funcionava.
+  // Agora o campo principal sempre abre o picker, tenha ou não horário já
+  // selecionado.
   Future<void> _escolherHora(BuildContext context) async {
     final initial = _horaExecucao ?? const TimeOfDay(hour: 8, minute: 0);
     final picked = await showBovTimePicker(
@@ -858,9 +873,9 @@ class _EditarDataHoraTarefaSheetState
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: _horaExecucao != null
-                        ? () => _escolherHora(context)
-                        : null,
+                    // BUGFIX: onTap não é mais condicional a
+                    // _horaExecucao != null — agora sempre abre o picker.
+                    onTap: () => _escolherHora(context),
                     child: Container(
                       height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1063,6 +1078,14 @@ class _TarefaItemState extends State<_TarefaItem> {
     _nomeFuture = widget.resolverNome(widget.tarefa.usuarioId);
   }
 
+  @override
+  void didUpdateWidget(covariant _TarefaItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tarefa.usuarioId != widget.tarefa.usuarioId) {
+      _nomeFuture = widget.resolverNome(widget.tarefa.usuarioId);
+    }
+  }
+
   bool get _isPendente => widget.tarefa.status == StatusTarefa.pendente;
   bool get _isAtrasada =>
       _isPendente &&
@@ -1212,7 +1235,7 @@ class _TarefaItemState extends State<_TarefaItem> {
                       FutureBuilder<String>(
                         future: _nomeFuture,
                         builder: (context, snapshot) => Text(
-                          "Autor da tarefa: ${snapshot.data}",
+                          "Autor da tarefa: ${snapshot.data ?? '...'}",
                           style: const TextStyle(
                             color: AppColors.text4,
                             fontSize: 14,

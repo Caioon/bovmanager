@@ -1,4 +1,3 @@
-import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/repositories/usuario_repository.dart';
@@ -11,10 +10,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Observa o usuário logado
     final state = ref.watch(usuarioViewModelProvider);
     final usuario = ref.watch(usuarioAtualProvider).value;
-    //TODO: forçar usuario a ser null pra ver o resultado
     if (usuario == null) {
       return Center(child: CircularProgressIndicator(color: AppColors.accent));
     }

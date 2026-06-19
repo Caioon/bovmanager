@@ -47,10 +47,14 @@ class TarefaRepository {
     required String propriedadeId,
     required String tarefaId,
     required DateTime novaData,
+    int? horaExecucaoMinutos,
+    bool clearHora = false,
   }) async {
-    await _col(propriedadeId)
-        .doc(tarefaId)
-        .update({'dataExecucao': novaData.toIso8601String()});
+    await _col(propriedadeId).doc(tarefaId).update({
+      'dataExecucao': novaData.toIso8601String(),
+      // Salva null explicitamente quando o usuário remove o horário
+      'horaExecucaoMinutos': clearHora ? null : horaExecucaoMinutos,
+    });
   }
 
   Future<void> atualizar({
