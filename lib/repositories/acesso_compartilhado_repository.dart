@@ -8,7 +8,10 @@ final acessoCompartilhadoRepositoryProvider =
     });
 
 class AcessoCompartilhadoRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  AcessoCompartilhadoRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // =========================
   // LISTAR ACESSOS DO USUÁRIO

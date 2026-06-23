@@ -19,10 +19,12 @@ final rebanhoRepositoryProvider = Provider<RebanhoRepository>((ref) {
 // =============================================================================
 
 class RebanhoRepository {
-  RebanhoRepository({required this.firestore, required this.auth});
-
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
+
+  RebanhoRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : firestore = firestore ?? FirebaseFirestore.instance,
+      auth = auth ?? FirebaseAuth.instance;
 
   CollectionReference<Map<String, dynamic>> _col(String propriedadeId) =>
       firestore

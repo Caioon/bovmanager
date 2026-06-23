@@ -11,11 +11,136 @@ NotificationService notificationService(Ref ref) {
   return NotificationService();
 }
 
-class NotificationService {
-  static final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+// =============================================================================
+// ADAPTER — isola FlutterLocalNotificationsPlugin (factory constructor,
+// não pode ser subclassado) para permitir injeção de dependência nos testes.
+// =============================================================================
 
-  static bool _initialized = false;
+/// Interface mínima sobre FlutterLocalNotificationsPlugin.
+/// Implemente [FakeNotificationPlugin] nos testes; use [RealNotificationPlugin]
+/// em produção (criado automaticamente quando nenhum plugin é injetado).
+abstract class NotificationPluginAdapter {
+  Future<bool?> initialize({
+    required InitializationSettings settings,
+    DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
+    DidReceiveBackgroundNotificationResponseCallback?
+    onDidReceiveBackgroundNotificationResponse,
+  });
+
+  Future<void> zonedSchedule({
+    required int id,
+    String? title,
+    String? body,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails notificationDetails,
+    required AndroidScheduleMode androidScheduleMode,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
+  });
+
+  Future<void> cancel({required int id, String? tag});
+
+  Future<void> cancelAll();
+
+  Future<List<PendingNotificationRequest>> pendingNotificationRequests();
+
+  Future<void> show({
+    required int id,
+    String? title,
+    String? body,
+    NotificationDetails? notificationDetails,
+    String? payload,
+  });
+
+  /// Permite acesso à API Android (canal, permissão, alarmes exatos).
+  /// Retorna null em plataformas não-Android e em fakes de teste.
+  AndroidFlutterLocalNotificationsPlugin? get androidPlugin;
+}
+
+/// Implementação de produção — delega para FlutterLocalNotificationsPlugin.
+class RealNotificationPlugin implements NotificationPluginAdapter {
+  final _plugin = FlutterLocalNotificationsPlugin();
+
+  @override
+  Future<bool?> initialize({
+    required InitializationSettings settings,
+    DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
+    DidReceiveBackgroundNotificationResponseCallback?
+    onDidReceiveBackgroundNotificationResponse,
+  }) =>
+      _plugin.initialize(
+        settings: settings,
+        onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+        onDidReceiveBackgroundNotificationResponse:
+        onDidReceiveBackgroundNotificationResponse,
+      );
+
+  @override
+  Future<void> zonedSchedule({
+    required int id,
+    String? title,
+    String? body,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails notificationDetails,
+    required AndroidScheduleMode androidScheduleMode,
+    String? payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) =>
+      _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: androidScheduleMode,
+        payload: payload,
+        matchDateTimeComponents: matchDateTimeComponents,
+      );
+
+  @override
+  Future<void> cancel({required int id, String? tag}) =>
+      _plugin.cancel(id: id, tag: tag);
+
+  @override
+  Future<void> cancelAll() => _plugin.cancelAll();
+
+  @override
+  Future<List<PendingNotificationRequest>> pendingNotificationRequests() =>
+      _plugin.pendingNotificationRequests();
+
+  @override
+  Future<void> show({
+    required int id,
+    String? title,
+    String? body,
+    NotificationDetails? notificationDetails,
+    String? payload,
+  }) =>
+      _plugin.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
+        payload: payload,
+      );
+
+  @override
+  AndroidFlutterLocalNotificationsPlugin? get androidPlugin =>
+      _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+}
+
+// =============================================================================
+// SERVIÇO
+// =============================================================================
+
+class NotificationService {
+  NotificationService([NotificationPluginAdapter? plugin])
+      : _plugin = plugin ?? RealNotificationPlugin();
+
+  final NotificationPluginAdapter _plugin;
+
+  bool _initialized = false;
 
   static const _channelId = 'bov_tarefas';
   static const _channelName = 'Tarefas';
@@ -85,25 +210,17 @@ class NotificationService {
     // Cria o canal de notificação explicitamente no Android.
     // Sem isso, notificações agendadas via zonedSchedule não aparecem
     // mesmo com permissões concedidas.
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(
-          const AndroidNotificationChannel(
-            _channelId,
-            _channelName,
-            description: _channelDesc,
-            importance: Importance.high,
-          ),
-        );
+    await _plugin.androidPlugin?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _channelId,
+        _channelName,
+        description: _channelDesc,
+        importance: Importance.high,
+      ),
+    );
 
     // Solicita permissão explícita no Android 13+
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+    await _plugin.androidPlugin?.requestNotificationsPermission();
 
     _initialized = true;
   }
@@ -207,17 +324,10 @@ class NotificationService {
     required String corpo,
     required DateTime horario,
   }) async {
-    // Esse androidPlugin e canExact servem para corrigir um problema específico:
-    // dependendo da plataforma ou Android, às vezes não é possível agendar
-    // alarmes exatos. No emulador ocorreu isso. Isso corrige o problema do
-    // emulador e talvez em dispositivos reais.
-    final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-
+    // androidPlugin?.canScheduleExactNotifications() é null em fakes e em
+    // plataformas não-Android → ?? false garante o modo inexato nesses casos.
     final canExact =
-        await androidPlugin?.canScheduleExactNotifications() ?? false;
+        await _plugin.androidPlugin?.canScheduleExactNotifications() ?? false;
 
     await _plugin.zonedSchedule(
       id: id,

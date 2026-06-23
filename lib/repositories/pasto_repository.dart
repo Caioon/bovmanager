@@ -19,10 +19,12 @@ final pastoRepositoryProvider = Provider<PastoRepository>((ref) {
 // =============================================================================
 
 class PastoRepository {
-  PastoRepository({required this.firestore, required this.auth});
-
   final FirebaseFirestore firestore;
   final FirebaseAuth auth;
+
+  PastoRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : firestore = firestore ?? FirebaseFirestore.instance,
+      auth = auth ?? FirebaseAuth.instance;
 
   CollectionReference<Map<String, dynamic>> _col(String propriedadeId) =>
       firestore

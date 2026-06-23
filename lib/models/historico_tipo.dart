@@ -11,6 +11,7 @@ enum HistoricoTipo {
   mudarRebanho,
   sairRebanhoMudarPasto,
   sairRebanhoManterPasto,
+  mudarPasto,
   mudarPastoComRebanho;
 
   // String salva no Firestore
@@ -28,6 +29,8 @@ enum HistoricoTipo {
         return 'sair_rebanho_mudar_pasto';
       case HistoricoTipo.sairRebanhoManterPasto:
         return 'sair_rebanho_manter_pasto';
+      case HistoricoTipo.mudarPasto:
+        return 'mudar_pasto_sem_rebanho';
       case HistoricoTipo.mudarPastoComRebanho:
         return 'mudar_pasto_com_rebanho';
     }
@@ -48,6 +51,8 @@ enum HistoricoTipo {
         return 'Sair do rebanho e mudar pasto';
       case HistoricoTipo.sairRebanhoManterPasto:
         return 'Sair do rebanho e manter pasto';
+      case HistoricoTipo.mudarPasto:
+        return 'Mudar de pasto e continuar sem rebanho';
       case HistoricoTipo.mudarPastoComRebanho:
         return 'Mudar pasto junto do rebanho';
     }
@@ -64,6 +69,7 @@ enum HistoricoTipo {
       case HistoricoTipo.mudarRebanho:
       case HistoricoTipo.sairRebanhoMudarPasto:
       case HistoricoTipo.sairRebanhoManterPasto:
+      case HistoricoTipo.mudarPasto:
       case HistoricoTipo.mudarPastoComRebanho:
         return HistoricoCategoria.movimentacao;
     }

@@ -19,8 +19,12 @@ UsuarioRepository usuarioRepository(Ref ref) {
 }
 
 class UsuarioRepository {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
+
+  UsuarioRepository({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
 
   // =========================
   // CRIAR USUÁRIO
@@ -40,7 +44,7 @@ class UsuarioRepository {
     final usuario = UsuarioModel(id: uid, nome: nome, email: email, cpf: cpf);
     await _firestore.collection('usuarios').doc(uid).set(usuario.toMap());
 
-    await _auth.signOut(); 
+    await _auth.signOut();
 
     return usuario;
   }
