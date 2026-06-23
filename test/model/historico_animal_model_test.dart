@@ -75,10 +75,7 @@ void main() {
     test('Round-trip toMap() → fromMap() deve manter todos os valores', () {
       final map = historico.toMap();
 
-      final result = HistoricoAnimalModel.fromMap(
-        map,
-        historico.id,
-      );
+      final result = HistoricoAnimalModel.fromMap(map, historico.id);
 
       expect(result.id, historico.id);
       expect(result.animalId, historico.animalId);
@@ -95,28 +92,31 @@ void main() {
       expect(result.nomeRebanhoDestino, historico.nomeRebanhoDestino);
     });
 
-    test('fromMap() com campos opcionais ausentes deve manter valores null', () {
-      final map = {
-        'animalId': 'animal123',
-        'tipo': historico.tipo.valor,
-        'data': data.toIso8601String(),
-      };
+    test(
+      'fromMap() com campos opcionais ausentes deve manter valores null',
+      () {
+        final map = {
+          'animalId': 'animal123',
+          'tipo': historico.tipo.valor,
+          'data': data.toIso8601String(),
+        };
 
-      final result = HistoricoAnimalModel.fromMap(map, 'hist123');
+        final result = HistoricoAnimalModel.fromMap(map, 'hist123');
 
-      expect(result.id, 'hist123');
-      expect(result.animalId, 'animal123');
-      expect(result.tipo, historico.tipo);
-      expect(result.novoPeso, null);
-      expect(result.pastoOrigemId, null);
-      expect(result.pastoDestinoId, null);
-      expect(result.rebanhoOrigemId, null);
-      expect(result.rebanhoDestinoId, null);
-      expect(result.data, data);
-      expect(result.nomePastoOrigem, null);
-      expect(result.nomePastoDestino, null);
-      expect(result.nomeRebanhoOrigem, null);
-      expect(result.nomeRebanhoDestino, null);
-    });
+        expect(result.id, 'hist123');
+        expect(result.animalId, 'animal123');
+        expect(result.tipo, historico.tipo);
+        expect(result.novoPeso, null);
+        expect(result.pastoOrigemId, null);
+        expect(result.pastoDestinoId, null);
+        expect(result.rebanhoOrigemId, null);
+        expect(result.rebanhoDestinoId, null);
+        expect(result.data, data);
+        expect(result.nomePastoOrigem, null);
+        expect(result.nomePastoDestino, null);
+        expect(result.nomeRebanhoOrigem, null);
+        expect(result.nomeRebanhoDestino, null);
+      },
+    );
   });
 }
