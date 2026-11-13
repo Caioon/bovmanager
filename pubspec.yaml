@@ -55,6 +55,7 @@ dependencies:
 
   # Reports / Sharing
   share_plus: ^13.1.0
+  pdf: ^3.12.0
 
   # Localization / Formatting
   intl: ^0.20.2
@@ -73,6 +74,7 @@ dependencies:
   geocoding: ^3.0.0
   timezone: ^0.11.0
   flutter_timezone: ^5.1.0
+  image: 4.10.2
 
 dev_dependencies:
   flutter_test:
@@ -82,6 +84,7 @@ dev_dependencies:
   mocktail: ^1.0.4
   fake_cloud_firestore: ^4.1.1
   firebase_auth_mocks: ^0.15.2
+  flutter_launcher_icons: ^0.14.3
 
   # Code Generation
   build_runner: ^2.4.6
@@ -90,6 +93,11 @@ dev_dependencies:
   # Lints
   flutter_lints: ^6.0.0
   riverpod_lint: ^3.0.0-dev.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/bovmanager_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
