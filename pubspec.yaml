@@ -55,6 +55,7 @@ dependencies:
 
   # Reports / Sharing
   share_plus: ^13.1.0
+  pdf: ^3.12.0
 
   # Localization / Formatting
   intl: ^0.20.2
@@ -73,6 +74,7 @@ dependencies:
   geocoding: ^3.0.0
   timezone: ^0.11.0
   flutter_timezone: ^5.1.0
+  image: 4.10.2
 
 dev_dependencies:
   flutter_test:

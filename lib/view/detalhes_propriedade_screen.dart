@@ -2,6 +2,7 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
+import 'package:bov_manager/view/relatorio_screen.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
@@ -230,7 +231,13 @@ class _DetalhesPropriedadeScreenState
                           icon: Icons.upload_file_rounded,
                           label: 'Relatório',
                           onTap: () {
-                            // TODO: AppCoordinator.goToRelatorio(context, propriedadeAtual);
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => RelatorioScreen(
+                                  propriedade: propriedadeAtual,
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ],
