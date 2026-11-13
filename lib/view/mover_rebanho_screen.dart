@@ -27,7 +27,9 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
 
   Future<void> _carregarPastos() async {
     try {
-      final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
+      final pastos = await ref.read(
+        pastosListaPropEmVisualizacaoProvider.future,
+      );
       if (mounted) setState(() => _pastos = pastos);
     } catch (_) {
       // lista permanece vazia
@@ -308,9 +310,11 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                                     rebanhoId: rebanho.id,
                                     antigoPastoId: rebanho.pastoId,
                                     novoPastoId: _pastoDestino!.id,
+                                    nomePastoOrigem: pastoAtual?.nome,
+                                    nomePastoDestino: _pastoDestino!.nome,
+                                    data: _data,
                                   );
                             },
-
                     ),
 
                     const SizedBox(height: 10),

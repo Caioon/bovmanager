@@ -2,7 +2,6 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
-import 'package:bov_manager/models/propriedade_model.dart';
 import 'package:bov_manager/models/rebanho_model.dart';
 import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/services/rebanho_service.dart';
@@ -26,7 +25,6 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
   String _racaSelecionada = '';
   DateTime _dataNascimento = DateTime.now();
 
-  PropriedadeModel? _propriedadeSelecionada;
   // ── Rebanho ───────────────────────────────────────────────────────────────
   List<RebanhoModel> _rebanhos = [];
   bool _carregandoRebanhos = false;
@@ -49,6 +47,30 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
     'Gir',
     'Outra',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final propId = ref.read(propriedadeSelecionadaProvider).requireValue!.id;
+      setState(() => _carregandoPastos = true);
+      ref
+          .read(pastoServiceProvider)
+          .listar(propId)
+          .then((pastos) {
+            if (!mounted) return;
+            setState(() {
+              _pastos = pastos;
+              _carregandoPastos = false;
+            });
+          })
+          .catchError((_) {
+            if (!mounted) return;
+            setState(() => _carregandoPastos = false);
+          });
+    });
+  }
 
   @override
   void dispose() {
@@ -80,7 +102,6 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(animaisViewModelProvider).isLoading;
-    final propriedadesAsync = ref.watch(propriedadesListaProvider);
     ref.listen(animaisViewModelProvider, (_, next) {
       next.whenOrNull(
         data: (_) => Navigator.of(context).pop(),
@@ -263,15 +284,16 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                 setState(() {
                                   _usarRebanho = false;
                                 });
-                                // Se a propriedade já está selecionada e os pastos
-                                // ainda não foram carregados, busca agora.
-                                if (_propriedadeSelecionada != null &&
-                                    _pastos.isEmpty &&
-                                    !_carregandoPastos) {
+                                // Se os pastos ainda não foram carregados, busca agora.
+                                if (_pastos.isEmpty && !_carregandoPastos) {
+                                  final propId = ref
+                                      .read(propriedadeSelecionadaProvider)
+                                      .requireValue!
+                                      .id;
                                   setState(() => _carregandoPastos = true);
                                   ref
                                       .read(pastoServiceProvider)
-                                      .listar(_propriedadeSelecionada!.id)
+                                      .listar(propId)
                                       .then((pastos) {
                                         if (!mounted) return;
                                         setState(() {
@@ -319,15 +341,16 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                 setState(() {
                                   _usarRebanho = true;
                                 });
-                                // Se a propriedade já está selecionada e os rebanhos
-                                // ainda não foram carregados, busca agora.
-                                if (_propriedadeSelecionada != null &&
-                                    _rebanhos.isEmpty &&
-                                    !_carregandoRebanhos) {
+                                // Se os rebanhos ainda não foram carregados, busca agora.
+                                if (_rebanhos.isEmpty && !_carregandoRebanhos) {
+                                  final propId = ref
+                                      .read(propriedadeSelecionadaProvider)
+                                      .requireValue!
+                                      .id;
                                   setState(() => _carregandoRebanhos = true);
                                   ref
                                       .read(rebanhoServiceProvider)
-                                      .listar(_propriedadeSelecionada!.id)
+                                      .listar(propId)
                                       .then((rebanhos) {
                                         if (!mounted) return;
                                         setState(() {
@@ -373,189 +396,119 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
 
                     const SizedBox(height: 14),
 
-                    // ── Propriedade ──────────────────────────────────────────
-                    propriedadesAsync.when(
-                      loading: () => const _DropdownSkeleton(
-                        label: 'Carregando propriedades...',
-                      ),
+                    // ── Conteúdo dinâmico ────────────────────────────────────
+                    const SizedBox(height: 10),
 
-                      error: (_, _) => const _DropdownSkeleton(
-                        label: 'Erro ao carregar propriedades',
-                      ),
+                    if (_usarRebanho) ...[
+                      if (_carregandoRebanhos)
+                        const _DropdownSkeleton(label: 'Carregando rebanhos...')
+                      else if (_rebanhos.isEmpty)
+                        _InfoBox(
+                          mensagem:
+                              'Nenhum rebanho cadastrado nesta propriedade.',
+                          botaoLabel: 'Criar rebanho',
+                          onBotao: () async {
+                            final propId = ref
+                                .read(propriedadeSelecionadaProvider)
+                                .requireValue!
+                                .id;
 
-                      data: (propriedades) => _BovDropdown<PropriedadeModel>(
-                        value: _propriedadeSelecionada,
-                        hint: 'Selecionar propriedade',
+                            await AppCoordinator.goToNovoRebanho(
+                              context,
+                              propriedadeId: propId,
+                            );
 
-                        items: propriedades
-                            .map(
-                              (p) => DropdownMenuItem(
-                                value: p,
-                                child: Text(p.nome),
-                              ),
-                            )
-                            .toList(),
+                            if (!mounted) return;
 
-                        onChanged: (p) async {
-                          if (p == null) return;
+                            final rebanhos = await ref
+                                .read(rebanhoServiceProvider)
+                                .listar(propId);
 
-                          setState(() {
-                            _propriedadeSelecionada = p;
-
-                            _rebanhos = [];
-                            _rebanhoSelecionado = null;
-                            _pastos = [];
-                            _pastoDestino = null;
-
-                            _carregandoRebanhos = _usarRebanho;
-                            _carregandoPastos = !_usarRebanho;
-                          });
-
-                          try {
-                            if (_usarRebanho) {
-                              final rebanhos = await ref
-                                  .read(rebanhoServiceProvider)
-                                  .listar(p.id);
-
-                              if (!mounted) return;
-
-                              setState(() {
-                                _rebanhos = rebanhos;
-                                _carregandoRebanhos = false;
-                              });
-                            } else {
-                              final pastos = await ref
-                                  .read(pastoServiceProvider)
-                                  .listar(p.id);
-
-                              if (!mounted) return;
-
-                              setState(() {
-                                _pastos = pastos;
-                                _carregandoPastos = false;
-                              });
-                            }
-                          } catch (_) {
                             if (!mounted) return;
 
                             setState(() {
-                              _carregandoRebanhos = false;
-                              _carregandoPastos = false;
+                              _rebanhos = rebanhos;
                             });
-                          }
-                        },
-                      ),
-                    ),
+                          },
+                        )
+                      else
+                        _BovDropdown<RebanhoModel>(
+                          value: _rebanhoSelecionado,
+                          hint: 'Selecionar rebanho',
 
-                    // ── Conteúdo dinâmico ────────────────────────────────────
-                    if (_propriedadeSelecionada != null) ...[
-                      const SizedBox(height: 10),
-
-                      if (_usarRebanho) ...[
-                        if (_carregandoRebanhos)
-                          const _DropdownSkeleton(
-                            label: 'Carregando rebanhos...',
-                          )
-                        else if (_rebanhos.isEmpty)
-                          _InfoBox(
-                            mensagem:
-                                'Nenhum rebanho cadastrado nesta propriedade.',
-                            botaoLabel: 'Criar rebanho',
-                            onBotao: () async {
-                              await AppCoordinator.goToNovoRebanho(
-                                context,
-                                propriedadeId: _propriedadeSelecionada!.id,
-                              );
-
-                              if (!mounted) return;
-
-                              if (_propriedadeSelecionada != null) {
-                                final rebanhos = await ref
-                                    .read(rebanhoServiceProvider)
-                                    .listar(_propriedadeSelecionada!.id);
-
-                                if (!mounted) return;
-
-                                setState(() {
-                                  _rebanhos = rebanhos;
-                                });
-                              }
-                            },
-                          )
-                        else
-                          _BovDropdown<RebanhoModel>(
-                            value: _rebanhoSelecionado,
-                            hint: 'Selecionar rebanho',
-
-                            items: _rebanhos
-                                .map(
-                                  (r) => DropdownMenuItem(
-                                    value: r,
-                                    child: Text(
-                                      r.nome,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                          items: _rebanhos
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r,
+                                  child: Text(
+                                    r.nome,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              )
+                              .toList(),
 
-                            onChanged: (r) {
-                              setState(() {
-                                _rebanhoSelecionado = r;
-                              });
-                            },
-                          ),
-                      ] else ...[
-                        if (_carregandoPastos)
-                          const _DropdownSkeleton(label: 'Carregando pastos...')
-                        else if (_pastos.isEmpty)
-                          _InfoBox(
-                            mensagem:
-                                'Nenhum pasto cadastrado nesta propriedade.',
-                            botaoLabel: 'Criar pasto',
-                            onBotao: () async {
-                              await AppCoordinator.goToNovoPasto(
-                                context,
-                                propriedadeId: _propriedadeSelecionada!.id,
-                              );
+                          onChanged: (r) {
+                            setState(() {
+                              _rebanhoSelecionado = r;
+                            });
+                          },
+                        ),
+                    ] else ...[
+                      if (_carregandoPastos)
+                        const _DropdownSkeleton(label: 'Carregando pastos...')
+                      else if (_pastos.isEmpty)
+                        _InfoBox(
+                          mensagem:
+                              'Nenhum pasto cadastrado nesta propriedade.',
+                          botaoLabel: 'Criar pasto',
+                          onBotao: () async {
+                            final propId = ref
+                                .read(propriedadeSelecionadaProvider)
+                                .requireValue!
+                                .id;
 
-                              if (_propriedadeSelecionada != null) {
-                                final pastos = await ref
-                                    .read(pastoServiceProvider)
-                                    .listar(_propriedadeSelecionada!.id);
+                            await AppCoordinator.goToNovoPasto(
+                              context,
+                              propriedadeId: propId,
+                            );
 
-                                if (!mounted) return;
+                            if (!mounted) return;
 
-                                setState(() {
-                                  _pastos = pastos;
-                                });
-                              }
-                            },
-                          )
-                        else
-                          _BovDropdown<PastoModel>(
-                            value: _pastoDestino,
-                            hint: 'Selecionar pasto',
+                            final pastos = await ref
+                                .read(pastoServiceProvider)
+                                .listar(propId);
 
-                            items: _pastos
-                                .map(
-                                  (p) => DropdownMenuItem(
-                                    value: p,
-                                    child: Text(
-                                      p.nome,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                            if (!mounted) return;
+
+                            setState(() {
+                              _pastos = pastos;
+                            });
+                          },
+                        )
+                      else
+                        _BovDropdown<PastoModel>(
+                          value: _pastoDestino,
+                          hint: 'Selecionar pasto',
+
+                          items: _pastos
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: p,
+                                  child: Text(
+                                    p.nome,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              )
+                              .toList(),
 
-                            onChanged: (p) {
-                              setState(() {
-                                _pastoDestino = p;
-                              });
-                            },
-                          ),
-                      ],
+                          onChanged: (p) {
+                            setState(() {
+                              _pastoDestino = p;
+                            });
+                          },
+                        ),
                     ],
                     const SizedBox(height: 24),
 
@@ -563,10 +516,6 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                       label: 'Cadastrar Animal',
                       isLoading: isLoading,
                       onPressed: () {
-                        final pastoIdFinal = _usarRebanho
-                            ? _rebanhoSelecionado?.pastoId
-                            : _pastoDestino?.id;
-
                         if (_usarRebanho && _rebanhoSelecionado == null) {
                           showBovErrorSnackBar(
                             context,
@@ -580,6 +529,20 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                           return;
                         }
 
+                        final nomePastoFinal = _usarRebanho
+                            ? _pastos
+                                  .firstWhere(
+                                    (pasto) =>
+                                        pasto.id ==
+                                        _rebanhoSelecionado!.pastoId,
+                                  )
+                                  .nome
+                            : _pastoDestino!.nome;
+
+                        final pastoIdFinal = _usarRebanho
+                            ? _rebanhoSelecionado!.pastoId
+                            : _pastoDestino!.id;
+
                         ref
                             .read(animaisViewModelProvider.notifier)
                             .criar(
@@ -589,10 +552,14 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                               pesoAtual:
                                   double.tryParse(_pesoController.text) ?? 0.0,
                               dataNascimento: _dataNascimento,
-                              rebanhoId: _usarRebanho
-                                  ? _rebanhoSelecionado?.id
+                              rebanhoDestinoId: _usarRebanho
+                                  ? _rebanhoSelecionado!.id
                                   : null,
-                              pastoDestinoId: pastoIdFinal!,
+                              nomeRebanhoDestino: _usarRebanho
+                                  ? _rebanhoSelecionado!.nome
+                                  : null,
+                              pastoDestinoId: pastoIdFinal,
+                              nomePastoDestino: nomePastoFinal,
                             );
                       },
                     ),

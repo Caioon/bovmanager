@@ -23,6 +23,7 @@ import 'package:bov_manager/view/novo_rebanho_screen.dart';
 import 'package:bov_manager/view/perfil_screen.dart';
 import 'package:bov_manager/view/propriedade_screen.dart';
 import 'package:bov_manager/view/tarefa_screen.dart';
+import 'package:bov_manager/view/teste_delecao_screen.dart';
 import 'package:flutter/material.dart';
 
 abstract class AppCoordinator {
@@ -169,12 +170,28 @@ abstract class AppCoordinator {
     Navigator.push(context, _slideRoute(const DetalhesPerfilScreen()));
   }
 
-  static void goToMapa(BuildContext context) {
-    Navigator.push(context, _slideRoute(const MapaScreen()));
+  static void goToMapa(BuildContext context, {bool emVisualizacao = false}) {
+    Navigator.push(
+      context,
+      _slideRoute(MapaScreen(emVisualizacao: emVisualizacao)),
+    );
   }
 
-  static void goToConfigurarMapa(BuildContext context) {
-    Navigator.push(context, _slideRoute(const MapaConfiguracaoScreen()));
+  static void goToConfigurarMapa(
+    BuildContext context, {
+    bool emVisualizacao = false,
+  }) {
+    Navigator.push(
+      context,
+      _slideRoute(MapaConfiguracaoScreen(emVisualizacao: emVisualizacao)),
+    );
+  }
+
+  // =========================
+  // TESTES
+  // =========================
+  static void goToTelaTestes(BuildContext context) {
+    Navigator.push(context, _slideRoute(const TesteDelecaoScreen()));
   }
 
   // =========================

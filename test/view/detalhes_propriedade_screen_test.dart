@@ -77,10 +77,11 @@ void main() {
     await tester.pumpWidget(buildScreen());
     await tester.pump();
 
-    // Nome aparece no header E no card de info → findsAtLeastNWidgets(1)
+    // Nome aparece no header
     expect(find.text('Fazenda Teste'), findsAtLeastNWidgets(1));
-    expect(find.text('RESUMO'), findsOneWidget);
-    expect(find.text('ATALHOS RÁPIDOS'), findsOneWidget);
+    expect(find.textContaining('Cadastrada em'), findsOneWidget);
+    expect(find.text('Criar relatório'), findsOneWidget);
+    expect(find.text('Alertas importantes'), findsOneWidget);
   });
 
   testWidgets('DetalhesPropriedadeScreen mostra métricas', (tester) async {
@@ -99,7 +100,7 @@ void main() {
     await tester.pumpWidget(buildScreen());
     await tester.pump();
 
-    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
     expect(find.text('Editar Propriedade'), findsOneWidget);
@@ -114,7 +115,7 @@ void main() {
     await tester.pumpWidget(buildScreen());
     await tester.pump();
 
-    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+    await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Apagar Propriedade'));

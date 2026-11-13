@@ -73,36 +73,12 @@ class PerfilScreen extends ConsumerWidget {
                     ),
                     const Spacer(),
                     BovSecondaryButton(
-                      label: 'Nova Tarefa',
-                      icon: Icons.add_task,
-                      onPressed: () => AppCoordinator.goToNovaTarefa(context),
-                    ),
-                    const SizedBox(height: 10),
-                    BovSecondaryButton(
-                      label: 'Lista de Tarefas',
-                      icon: Icons.task,
-                      onPressed: () => AppCoordinator.goToListaTarefas(context),
-                    ),
-                    const SizedBox(height: 10),
-                    BovSecondaryButton(
                       label: 'Ver Dados',
                       icon: Icons.person_outline,
                       onPressed: () =>
                           AppCoordinator.goToDetalhesPerfil(context),
                     ),
                     const SizedBox(height: 10),
-                    BovSecondaryButton(
-                      label: 'Mapa da Propriedade',
-                      icon: Icons.map_outlined,
-                      onPressed: () => AppCoordinator.goToMapa(context),
-                    ),
-                    const SizedBox(height: 10),
-                    BovSecondaryButton(
-                      label: 'Configuração de mapa',
-                      icon: Icons.map_outlined,
-                      onPressed: () =>
-                          AppCoordinator.goToConfigurarMapa(context),
-                    ),
                     const SizedBox(height: 30),
 
                     // ── Testes de notificação ──────────────────────────────
@@ -136,6 +112,14 @@ class PerfilScreen extends ConsumerWidget {
                       },
                     ),
                     const SizedBox(height: 10),
+
+                    // ── Tela de testes ─────────────────────────────────────
+                    BovSecondaryButton(
+                      label: 'Ir para tela de testes',
+                      icon: Icons.science_outlined,
+                      onPressed: () => AppCoordinator.goToTelaTestes(context),
+                    ),
+                    const SizedBox(height: 30),
 
                     // ── Logout ─────────────────────────────────────────────
                     BovDangerButton(

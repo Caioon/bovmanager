@@ -1,3 +1,4 @@
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:bov_manager/viewmodels/historico_animal_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,8 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bov_manager/models/animal_model.dart';
 import 'package:bov_manager/models/historico_animal_model.dart';
 import 'package:bov_manager/models/historico_tipo.dart';
+import 'package:bov_manager/models/pasto_model.dart';
+import 'package:bov_manager/models/rebanho_model.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
 import 'package:bov_manager/view/historico_animal_screen.dart';
+import 'package:bov_manager/repositories/rebanho_repository.dart';
+import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
@@ -41,6 +46,30 @@ class FakePropriedadeEmVisualizacao extends PropriedadeEmVisualizacao {
 
   @override
   PropriedadeModel? build() => initialValue;
+}
+
+// Fakes de service/repository usados por _HistoricoBodyState._carregarRefs.
+// Sem eles, os providers reais tentam usar FirebaseFirestore.instance e falham
+// com "No Firebase App '[DEFAULT]' has been created".
+// noSuchMethod evita ter que reimplementar todos os métodos da classe real.
+class FakePastoService implements PastoService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #listar) {
+      return Future.value(<PastoModel>[]);
+    }
+    return super.noSuchMethod(invocation);
+  }
+}
+
+class FakeRebanhoRepository implements RebanhoRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #listarStream) {
+      return Stream.value(<RebanhoModel>[]);
+    }
+    return super.noSuchMethod(invocation);
+  }
 }
 
 // =============================================================================
@@ -80,15 +109,15 @@ HistoricoAnimalModel _makeHistorico({
   double? novoPeso,
   String? nomePastoOrigem,
   String? nomePastoDestino,
-  String? pastoOrigemId, 
-  String? pastoDestinoId, 
+  String? pastoOrigemId,
+  String? pastoDestinoId,
 }) => HistoricoAnimalModel(
   id: id,
   animalId: 'a1',
   tipo: tipo,
   novoPeso: novoPeso,
-  pastoOrigemId: pastoOrigemId, 
-  pastoDestinoId: pastoDestinoId, 
+  pastoOrigemId: pastoOrigemId,
+  pastoDestinoId: pastoDestinoId,
   rebanhoOrigemId: null,
   rebanhoDestinoId: null,
   nomePastoOrigem: nomePastoOrigem,
@@ -116,6 +145,8 @@ Widget buildScreen({
         () => FakePropriedadeEmVisualizacao(_propriedadeFake),
       ),
       pastosListaPropEmVisualizacaoProvider.overrideWith((_) async => []),
+      pastoServiceProvider.overrideWith((_) => FakePastoService()),
+      rebanhoRepositoryProvider.overrideWith((_) => FakeRebanhoRepository()),
       // overrideWithValue seta o AsyncValue diretamente no provider,
       // sem passar por stream → sem retry, sem timing
       historicoAnimalListaProvider.overrideWithValue(historico),
@@ -132,6 +163,9 @@ Widget buildScreen({
 // =============================================================================
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('pt_BR');
+  });
   // ---------------------------------------------------------------------------
   // HEADER
   // ---------------------------------------------------------------------------
@@ -264,7 +298,15 @@ void main() {
       await tester.pump();
 
       expect(find.text('EVOLUÇÃO DE PESO'), findsOneWidget);
-      expect(find.textContaining('420 kg'), findsOneWidget);
+      // '420 kg' aparece duas vezes: no card de peso atual (fonte 22) e no
+      // rótulo da barra mais recente do gráfico (fonte 10). Conferimos o card.
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Text && w.data == '420 kg' && w.style?.fontSize == 22,
+        ),
+        findsOneWidget,
+      );
     });
     testWidgets('exibe seção MOVIMENTAÇÕES quando há movimentações', (
       tester,
@@ -281,7 +323,7 @@ void main() {
             ),
             _makeHistorico(
               id: 'h2',
-              tipo: HistoricoTipo.mudarPasto,
+              tipo: HistoricoTipo.mudarPastoContinuarSemRebanho,
               pastoOrigemId: 'pasto-a',
               pastoDestinoId: 'pasto-b',
               nomePastoOrigem: 'Pasto Origem',

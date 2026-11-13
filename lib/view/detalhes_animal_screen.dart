@@ -2,6 +2,9 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/animal_model.dart';
+import 'package:bov_manager/models/historico_tipo.dart';
+import 'package:bov_manager/repositories/rebanho_repository.dart';
+import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/view/atualizar_historico_screen.dart';
 import 'package:bov_manager/viewmodels/animal_viewmodel.dart';
 import 'package:bov_manager/viewmodels/historico_animal_viewmodel.dart';
@@ -9,6 +12,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+// Regras de habilitação das opções do modal "Atualizar Histórico":
+// - Entrar/mudar de rebanho: precisa existir pelo menos 1 rebanho cadastrado
+//   na propriedade diferente do rebanho atual do animal (cobre os dois
+//   casos: "entrar" quando não há rebanho atual, e "mudar" quando há).
+// - Mudar para outro pasto: precisa existir pelo menos 1 pasto cadastrado
+//   diferente do pasto atual do animal.
+// - Sair do rebanho: só é possível se o animal já estiver em um rebanho.
+//
+// Buscamos rebanhos/pastos direto do repositório/serviço (e não via
+// `pastosListaPropEmVisualizacaoProvider`/`rebanhoListaProvider`) pelo mesmo
+// motivo documentado em `showAtualizarHistoricoModal`: esses providers
+// dependem da "propriedade em visualização" (estado global à parte), que
+// pode nunca ter sido setada nesta tela.
 class DetalhesAnimalScreen extends ConsumerStatefulWidget {
   const DetalhesAnimalScreen({super.key});
 
@@ -18,19 +34,68 @@ class DetalhesAnimalScreen extends ConsumerStatefulWidget {
 }
 
 class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
+  // ignore: unused_field
+  late final AnimalEmVisualizacao _animalNotifier;
+  // ignore: unused_field
+  late final ProviderSubscription _animaisListener;
+
+  // Chave usada para saber se já carregamos as flags para a combinação
+  // atual de propriedade/rebanho/pasto, evitando refetch a cada build.
+  String? _flagsMovimentacaoKey;
+  bool _carregandoFlagsMovimentacao = false;
+  bool _podeMovimentarRebanho = false;
+  bool _podeMudarPasto = false;
+
   @override
   void initState() {
     super.initState();
-    ref.listenManual(animaisViewModelProvider, (_, next) {
-      next.whenOrNull(
-        error: (e, _) => showBovErrorSnackBar(context, e.toString()),
-      );
+
+    _animalNotifier = ref.read(animalEmVisualizacaoProvider.notifier);
+
+    _animaisListener = ref.listenManual(animaisViewModelProvider, (_, next) {
+      if (next is AsyncError<void>) {
+        if (!mounted) return;
+
+        showBovErrorSnackBar(context, next.error.toString());
+      }
     });
+  }
+
+  Future<void> _carregarFlagsMovimentacao({
+    required String propriedadeId,
+    required String? rebanhoAtualId,
+    required String? pastoAtualId,
+  }) async {
+    try {
+      final rebanhos = await ref
+          .read(rebanhoRepositoryProvider)
+          .listarStream(propriedadeId)
+          .first;
+      final pastos = await ref.read(pastoServiceProvider).listar(propriedadeId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _podeMovimentarRebanho = rebanhos.any(
+          (rebanho) => rebanho.id != rebanhoAtualId,
+        );
+        _podeMudarPasto = pastos.any((pasto) => pasto.id != pastoAtualId);
+        _carregandoFlagsMovimentacao = false;
+      });
+    } catch (_) {
+      // Se a busca falhar, mantemos as opções desabilitadas (vermelhas) por
+      // segurança em vez de deixar o usuário tentar uma movimentação que
+      // pode não ser possível.
+      if (!mounted) return;
+
+      setState(() {
+        _carregandoFlagsMovimentacao = false;
+      });
+    }
   }
 
   @override
   void dispose() {
-    ref.read(animalEmVisualizacaoProvider.notifier).fechar();
     super.dispose();
   }
 
@@ -56,16 +121,39 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
 
     final historicos = ref.watch(historicoAnimalListaProvider).value;
 
-    String? rebanhoId;
+    String? nomeRebanhoAtual;
+    String? nomePastoAtual;
+    String? rebanhoAtualId;
+    String? pastoAtualId;
 
     if (historicos != null) {
       for (final registro in historicos) {
-        if (registro.tipo != 'Pesagem') {
-          rebanhoId = registro.rebanhoDestinoId;
+        if (registro.tipo != HistoricoTipo.pesagem) {
+          nomeRebanhoAtual = registro.nomeRebanhoDestino;
+          nomePastoAtual = registro.nomePastoDestino;
+          rebanhoAtualId = registro.rebanhoDestinoId;
+          pastoAtualId = registro.pastoDestinoId;
           break;
         }
       }
     }
+
+    bool temRebanho = nomeRebanhoAtual != null;
+
+    final flagsKey = '${animal.propriedadeId}|$rebanhoAtualId|$pastoAtualId';
+    if (_flagsMovimentacaoKey != flagsKey && !_carregandoFlagsMovimentacao) {
+      _flagsMovimentacaoKey = flagsKey;
+      _carregandoFlagsMovimentacao = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _carregarFlagsMovimentacao(
+          propriedadeId: animal.propriedadeId,
+          rebanhoAtualId: rebanhoAtualId,
+          pastoAtualId: pastoAtualId,
+        );
+      });
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -211,7 +299,14 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
                           _InfoRow(
                             icon: Icons.groups_outlined,
                             label: 'Rebanho',
-                            value: rebanhoId ?? 'Sem rebanho',
+                            value: nomeRebanhoAtual ?? 'Sem rebanho',
+                          ),
+                          _InfoRow(
+                            icon: Icons.grass_rounded,
+                            label: nomeRebanhoAtual != null
+                                ? 'Pasto atual (mesmo do rebanho)'
+                                : 'Pasto atual',
+                            value: nomePastoAtual ?? 'Sem pasto',
                           ),
                           _InfoRow(
                             icon: Icons.calendar_today_rounded,
@@ -240,7 +335,19 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
                       icon: Icons.edit_note_rounded,
                       onPressed: () => showAtualizarHistoricoModal(
                         context,
-                        rebanhoId != null,
+                        temRebanho: temRebanho,
+                        podeMovimentarRebanho: _podeMovimentarRebanho,
+                        podeMudarPasto: _podeMudarPasto,
+                        motivoMovimentarRebanhoIndisponivel:
+                            _carregandoFlagsMovimentacao
+                            ? 'Carregando dados...'
+                            : (temRebanho
+                                  ? 'Nenhum outro rebanho cadastrado'
+                                  : 'Nenhum rebanho cadastrado na propriedade'),
+                        motivoMudarPastoIndisponivel:
+                            _carregandoFlagsMovimentacao
+                            ? 'Carregando dados...'
+                            : 'Nenhum outro pasto cadastrado',
                       ),
                     ),
                   ],
@@ -422,6 +529,8 @@ class _InfoRow extends StatelessWidget {
     required this.value,
     this.isFirst = false,
     this.isLast = false,
+    // ignore: unused_element_parameter
+    this.valueColor,
   });
 
   final IconData icon;
@@ -429,6 +538,7 @@ class _InfoRow extends StatelessWidget {
   final String value;
   final bool isFirst;
   final bool isLast;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -459,14 +569,19 @@ class _InfoRow extends StatelessWidget {
               fontFamily: 'DM Sans',
             ),
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.text2,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'DM Sans',
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: valueColor ?? AppColors.text2,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'DM Sans',
+              ),
             ),
           ),
         ],

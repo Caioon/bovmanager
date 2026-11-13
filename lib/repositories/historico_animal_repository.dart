@@ -25,10 +25,15 @@ abstract class HistoricoAnimalRepository {
     required String animalId,
     required HistoricoTipo tipo,
     required double? novoPeso,
+    required DateTime data,
     String? pastoOrigemId,
     String? pastoDestinoId,
     String? rebanhoOrigemId,
     String? rebanhoDestinoId,
+    String? nomePastoOrigem,
+    String? nomePastoDestino,
+    String? nomeRebanhoOrigem,
+    String? nomeRebanhoDestino,
     required WriteBatch batch,
   });
 
@@ -81,10 +86,15 @@ class HistoricoAnimalRepositoryImpl implements HistoricoAnimalRepository {
     required String animalId,
     required HistoricoTipo tipo,
     required double? novoPeso,
+    required DateTime data,
     String? pastoOrigemId,
     String? pastoDestinoId,
     String? rebanhoOrigemId,
     String? rebanhoDestinoId,
+    String? nomePastoOrigem,
+    String? nomePastoDestino,
+    String? nomeRebanhoOrigem,
+    String? nomeRebanhoDestino,
     required WriteBatch batch,
   }) async {
     final historicoRef = _col(animalId).doc();
@@ -97,7 +107,11 @@ class HistoricoAnimalRepositoryImpl implements HistoricoAnimalRepository {
       'pastoDestinoId': pastoDestinoId,
       'rebanhoOrigemId': rebanhoOrigemId,
       'rebanhoDestinoId': rebanhoDestinoId,
-      'data': DateTime.now().toIso8601String(),
+      'nomePastoOrigem': nomePastoOrigem,
+      'nomePastoDestino': nomePastoDestino,
+      'nomeRebanhoOrigem': nomeRebanhoOrigem,
+      'nomeRebanhoDestino': nomeRebanhoDestino,
+      'data': data.toIso8601String(),
     });
   }
 

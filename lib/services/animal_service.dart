@@ -13,7 +13,7 @@ AnimalService animalService(Ref ref) {
   return AnimalService(
     ref.watch(animalRepositoryProvider),
     ref.read(historicoAnimalServiceProvider),
-    ref.read(rebanhoServiceProvider), 
+    ref.read(rebanhoServiceProvider),
     FirebaseFirestore.instance,
   );
 }
@@ -46,7 +46,9 @@ class AnimalService {
     required String pastoId,
   }) async {
     // Busca todos os animais e rebanhos em paralelo
-    final animais = await _repo.listarPorPropriedade(propriedadeId: propriedadeId).first;
+    final animais = await _repo
+        .listarPorPropriedade(propriedadeId: propriedadeId)
+        .first;
     final rebanhos = await _rebanhoService.listar(propriedadeId);
 
     // IDs dos rebanhos que estão neste pasto
@@ -81,9 +83,11 @@ class AnimalService {
     required String raca,
     required double novoPeso,
     required DateTime dataNascimento,
-    required String? rebanhoId,
+    required String? rebanhoDestinoId,
+    required String? nomeRebanhoDestino,
     required String propriedadeId,
-    String? pastoDestinoId,
+    required String pastoDestinoId,
+    required String nomePastoDestino,
     String? fotoUrl,
   }) async {
     final batch = _firestore.batch();
@@ -103,10 +107,15 @@ class AnimalService {
       animalId: animalId,
       tipo: HistoricoTipo.entrada,
       novoPeso: novoPeso,
+      data: DateTime.now(),
       pastoOrigemId: null,
       pastoDestinoId: pastoDestinoId,
       rebanhoOrigemId: null,
-      rebanhoDestinoId: rebanhoId,
+      rebanhoDestinoId: rebanhoDestinoId,
+      nomePastoOrigem: null,
+      nomePastoDestino: nomePastoDestino,
+      nomeRebanhoOrigem: null,
+      nomeRebanhoDestino: nomeRebanhoDestino,
       batch: batch,
     );
 
@@ -152,6 +161,10 @@ class AnimalService {
     String? pastoDestinoId,
     String? rebanhoOrigemId,
     String? rebanhoDestinoId,
+    String? nomePastoOrigem,
+    String? nomePastoDestino,
+    String? nomeRebanhoOrigem,
+    String? nomeRebanhoDestino,
   }) async {
     final batch = _firestore.batch();
 
@@ -168,10 +181,15 @@ class AnimalService {
       animalId: animalId,
       tipo: tipo,
       novoPeso: novoPeso,
+      data: data,
       pastoOrigemId: pastoOrigemId,
       pastoDestinoId: pastoDestinoId,
       rebanhoOrigemId: rebanhoOrigemId,
       rebanhoDestinoId: rebanhoDestinoId,
+      nomePastoOrigem: nomePastoOrigem,
+      nomePastoDestino: nomePastoDestino,
+      nomeRebanhoOrigem: nomeRebanhoOrigem,
+      nomeRebanhoDestino: nomeRebanhoDestino,
       batch: batch,
     );
     await batch.commit();

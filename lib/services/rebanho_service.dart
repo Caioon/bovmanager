@@ -77,6 +77,9 @@ class RebanhoService {
     required String propriedadeId,
     required String antigoPastoId,
     required String novoPastoId,
+    String? nomePastoOrigem,
+    String? nomePastoDestino,
+    required DateTime data,
   }) async {
     if (novoPastoId.isEmpty) {
       throw Exception('Selecione o pasto de destino.');
@@ -117,6 +120,12 @@ class RebanhoService {
         pastoDestinoId: novoPastoId,
         rebanhoOrigemId: rebanhoId,
         rebanhoDestinoId: rebanhoId,
+        nomePastoOrigem: nomePastoOrigem,
+        nomePastoDestino: nomePastoDestino,
+        data: data,
+        // Rebanho não muda — nomes de rebanho são null neste fluxo
+        nomeRebanhoOrigem: null,
+        nomeRebanhoDestino: null,
         batch: batch,
       );
     }
@@ -125,9 +134,36 @@ class RebanhoService {
   }
 
   // ---------------------------------------------------------------------------
+  // Verificar se o rebanho pode ser apagado
+  // Retorna null se pode apagar, ou a mensagem de bloqueio se não pode.
+  // ---------------------------------------------------------------------------
+  Future<String?> podeApagarRebanho({
+    required String rebanhoId,
+    required String propriedadeId,
+  }) async {
+    final animais = await animalRepository
+        .listarPorPropriedade(propriedadeId: propriedadeId)
+        .first;
+
+    int count = 0;
+    for (final animal in animais) {
+      final ultima = await historicoService.buscarUltimaMovimentacao(
+        animalId: animal.id,
+      );
+      if (ultima?.rebanhoDestinoId == rebanhoId) count++;
+    }
+
+    if (count > 0) {
+      return 'Este rebanho possui $count animal(is). Mova-os antes de apagar.';
+    }
+
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
   // Apagar
   // ---------------------------------------------------------------------------
-  Future<void> apagar({
+  Future<void> apagarRebanho({
     required String rebanhoId,
     required String propriedadeId,
   }) {

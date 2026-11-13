@@ -85,4 +85,21 @@ class PoligonoRepository {
     if (existente == null) return;
     await _col(propriedadeId).doc(existente.id).delete();
   }
+
+  // ---------------------------------------------------------------------------
+  // Apagar polígono de um pasto — participa de um batch externo.
+  // Não faz nada se não houver polígono associado ao pasto.
+  // ---------------------------------------------------------------------------
+  Future<void> apagarEmBatch({
+    required String propriedadeId,
+    required String pastoId,
+    required WriteBatch batch,
+  }) async {
+    final existente = await buscarPorPasto(
+      propriedadeId: propriedadeId,
+      pastoId: pastoId,
+    );
+    if (existente == null) return;
+    batch.delete(_col(propriedadeId).doc(existente.id));
+  }
 }

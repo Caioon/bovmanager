@@ -25,6 +25,7 @@ class HistoricoAnimalViewModel extends _$HistoricoAnimalViewModel {
   @override
   AsyncValue<void> build() => const AsyncData(null);
 
+  // ignore: unused_element
   HistoricoAnimalService get _service =>
       ref.read(historicoAnimalServiceProvider);
 }

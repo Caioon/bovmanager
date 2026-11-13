@@ -29,8 +29,10 @@ class FakeAnimaisViewModel extends AnimaisViewModel {
     required String raca,
     required double pesoAtual,
     required DateTime dataNascimento,
-    required String? rebanhoId,   // required + nullable — igual ao ViewModel real
-    String? pastoDestinoId,
+    required String? rebanhoDestinoId,
+    required String? nomeRebanhoDestino,
+    required String pastoDestinoId,
+    required String nomePastoDestino,
   }) async {}
 }
 

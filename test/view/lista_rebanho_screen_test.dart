@@ -118,9 +118,9 @@ void main() {
       // Botão de adicionar
       expect(find.byIcon(Icons.add_rounded), findsOneWidget);
 
-      // Nome do rebanho e badge de status na lista
+      // Nome do rebanho e nome do pasto exibidos no item da lista
       expect(find.text('Rebanho Alpha'), findsOneWidget);
-      expect(find.text('Ativo'), findsOneWidget);
+      expect(find.text('Pasto Norte'), findsOneWidget);
     });
 
     // 3. Comportamento básico — lista vazia exibe empty state

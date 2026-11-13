@@ -130,6 +130,7 @@ class UsuarioRepository {
     return controller.stream;
   }
 
+  // ignore: unused_element
   Future<UsuarioModel?> _buscarPorId(String uid) async {
     final doc = await _firestore.collection('usuarios').doc(uid).get();
     if (!doc.exists) return null;

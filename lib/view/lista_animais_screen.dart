@@ -28,6 +28,19 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
   Widget build(BuildContext context) {
     final propriedadeState = ref.watch(propriedadeSelecionadaProvider);
 
+    // O botão "+" do header só aparece quando já existe ao menos um animal
+    final temAnimais = propriedadeState.value != null &&
+        (ref.watch(animaisListaProvider).value?.isNotEmpty ?? false);
+
+    // Sem propriedade: exibe só o empty state (sem header nem busca),
+    // igual ao dashboard
+    if (propriedadeState.hasValue && propriedadeState.value == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const SafeArea(child: _SemPropriedadeState()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -36,36 +49,40 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
             // ── Header ────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Animais',
-                    style: TextStyle(
-                      color: AppColors.text,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'DM Sans',
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => AppCoordinator.goToNovoAnimal(context),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(
-                        Icons.add_rounded,
-                        color: AppColors.text2,
-                        size: 20,
+              child: SizedBox(
+                height: 36,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Animais',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'DM Sans',
                       ),
                     ),
-                  ),
-                ],
+                    if (temAnimais)
+                      GestureDetector(
+                        onTap: () => AppCoordinator.goToNovoAnimal(context),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            color: AppColors.text2,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
 
@@ -102,10 +119,8 @@ class _ListaAnimaisScreenState extends ConsumerState<ListaAnimaisScreen> {
                 ),
 
                 data: (propriedade) {
-                  // Nenhuma propriedade cadastrada
-                  if (propriedade == null) {
-                    return const _SemPropriedadeState();
-                  }
+                  // Sem propriedade já é tratado no início do build
+                  if (propriedade == null) return const SizedBox.shrink();
 
                   final listaState = ref.watch(animaisListaProvider);
 
@@ -347,67 +362,51 @@ class _SemPropriedadeState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Icon(
-                Icons.home_work_outlined,
-                size: 32,
-                color: AppColors.text3,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              'Nenhuma propriedade cadastrada',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.text,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'DM Sans',
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            const Text(
-              'Cadastre uma propriedade para começar a gerenciar seus animais.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.text4,
-                fontSize: 14,
-                height: 1.5,
-                fontFamily: 'DM Sans',
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              child: BovPrimaryButton(
-                label: 'Cadastrar propriedade',
-                onPressed: () {
-                  AppCoordinator.goToNovaPropriedade(context);
-                },
-              ),
-            ),
-          ],
+    return Column(
+      children: [
+        const SizedBox(height: 60),
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.accentBg,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(
+            Icons.home_work_outlined,
+            color: AppColors.accent,
+            size: 34,
+          ),
         ),
-      ),
+        const SizedBox(height: 20),
+        const Text(
+          'Nenhuma propriedade',
+          style: TextStyle(
+            color: AppColors.text,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Cadastre uma propriedade para\ncomeçar a gerenciar seus animais.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.text4,
+            fontSize: 13,
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 28),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: BovPrimaryButton(
+            label: 'Cadastrar Propriedade',
+            onPressed: () => AppCoordinator.goToNovaPropriedade(context),
+          ),
+        ),
+      ],
     );
   }
 }

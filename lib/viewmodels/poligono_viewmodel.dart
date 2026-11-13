@@ -1,4 +1,5 @@
 import 'package:bov_manager/models/poligono_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bov_manager/services/poligono_service.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -15,6 +16,14 @@ Stream<List<PoligonoModel>> poligonosLista(Ref ref) {
   if (propriedadeId == null) return const Stream.empty();
   return ref.read(poligonoServiceProvider).listarStream(propriedadeId);
 }
+
+// Mesma lista, mas da propriedade em visualização (tela de detalhes).
+final poligonosListaPropEmVisProvider =
+    StreamProvider<List<PoligonoModel>>((ref) {
+  final propriedadeId = ref.watch(propriedadeEmVisualizacaoProvider)?.id;
+  if (propriedadeId == null) return const Stream.empty();
+  return ref.read(poligonoServiceProvider).listarStream(propriedadeId);
+});
 
 // =============================================================================
 // VIEWMODEL — SALVAR E APAGAR
@@ -37,11 +46,12 @@ class PoligonoViewModel extends _$PoligonoViewModel {
   Future<bool> salvar({
     required String pastoId,
     required List<LatLngPoint> pontos,
+    String? propriedadeId,
   }) async {
     state = const AsyncLoading();
     try {
       await _service.salvar(
-        propriedadeId: _propriedadeId,
+        propriedadeId: propriedadeId ?? _propriedadeId,
         pastoId: pastoId,
         pontos: pontos,
       );

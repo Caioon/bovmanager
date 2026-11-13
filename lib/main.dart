@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -20,6 +21,8 @@ Future<void> main() async {
   final timezoneInfo = await FlutterTimezone.getLocalTimezone();
 
   tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+
+  await initializeDateFormatting('pt_BR');
 
   runApp(const ProviderScope(child: MyApp()));
 }

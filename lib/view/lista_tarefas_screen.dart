@@ -9,6 +9,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+/// Abre o modal "Alterar tarefa" (título e descrição).
+/// Pública para ser reutilizada em outras telas (ex.: dashboard).
+void mostrarEditarInfoTarefa(
+  BuildContext context,
+  WidgetRef ref,
+  TarefaModel tarefa,
+) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.card,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _EditarInfoTarefaSheet(
+      tarefa: tarefa,
+      onSalvar: (titulo, descricao) {
+        ref
+            .read(tarefasViewModelProvider.notifier)
+            .editar(
+              tarefaId: tarefa.id,
+              titulo: titulo,
+              descricao: descricao,
+              // Preserva data e hora atuais — este modal não altera data/hora
+              dataExecucao: tarefa.dataExecucao,
+              horaExecucaoMinutos: tarefa.horaExecucaoMinutos,
+              clearHora: false,
+            );
+      },
+    ),
+  );
+}
+
 class ListaTarefasScreen extends ConsumerStatefulWidget {
   const ListaTarefasScreen({super.key});
 
@@ -44,30 +77,7 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
   // ---------------------------------------------------------------------------
 
   void _showEditarInfoTarefa(BuildContext context, TarefaModel tarefa) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _EditarInfoTarefaSheet(
-        tarefa: tarefa,
-        onSalvar: (titulo, descricao) {
-          ref
-              .read(tarefasViewModelProvider.notifier)
-              .editar(
-                tarefaId: tarefa.id,
-                titulo: titulo,
-                descricao: descricao,
-                // Preserva data e hora atuais — este modal não altera data/hora
-                dataExecucao: tarefa.dataExecucao,
-                horaExecucaoMinutos: tarefa.horaExecucaoMinutos,
-                clearHora: false,
-              );
-        },
-      ),
-    );
+    mostrarEditarInfoTarefa(context, ref, tarefa);
   }
 
   // ---------------------------------------------------------------------------
@@ -438,6 +448,9 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
                   isLast: e.key == pendentes.length - 1,
                   resolverNome: _resolverNome,
                   onTap: () => _onTarefaTap(context, e.value),
+                  onConcluir: () => ref
+                      .read(tarefasViewModelProvider.notifier)
+                      .concluir(tarefaId: e.value.id),
                 ),
               ),
             ],
@@ -450,6 +463,9 @@ class _ListaTarefasScreenState extends ConsumerState<ListaTarefasScreen> {
                   isLast: e.key == concluidas.length - 1,
                   resolverNome: _resolverNome,
                   onTap: () => _onTarefaTap(context, e.value),
+                  onConcluir: () => ref
+                      .read(tarefasViewModelProvider.notifier)
+                      .concluir(tarefaId: e.value.id),
                 ),
               ),
             ],
@@ -732,7 +748,7 @@ class _EditarDataHoraTarefaSheetState
     // Adiar começa com uma data futura como padrão
     _dataExecucao = widget.tarefa.dataExecucao.isAfter(DateTime.now())
         ? widget.tarefa.dataExecucao
-        : DateTime.now().add(const Duration(days: 1));
+        : DateTime.now();
 
     // Preserva o horário atual da tarefa, se houver
     final minutos = widget.tarefa.horaExecucaoMinutos;
@@ -745,7 +761,7 @@ class _EditarDataHoraTarefaSheetState
     final picked = await showDatePicker(
       context: context,
       initialDate: _dataExecucao,
-      firstDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2100),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
@@ -1057,6 +1073,7 @@ class _TarefaItem extends StatefulWidget {
     required this.isLast,
     required this.resolverNome,
     required this.onTap,
+    required this.onConcluir,
   });
 
   final TarefaModel tarefa;
@@ -1064,6 +1081,9 @@ class _TarefaItem extends StatefulWidget {
   final bool isLast;
   final Future<String> Function(String) resolverNome;
   final VoidCallback onTap;
+
+  /// Chamado ao tocar na checkbox de uma tarefa pendente.
+  final VoidCallback onConcluir;
 
   @override
   State<_TarefaItem> createState() => _TarefaItemState();
@@ -1130,32 +1150,40 @@ class _TarefaItemState extends State<_TarefaItem> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ícone de status
-            Container(
-              margin: const EdgeInsets.only(top: 1),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: _isPendente
-                    ? (_isAtrasada ? AppColors.redBg : AppColors.accentBg)
-                    : AppColors.accentBg,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: _isPendente
-                      ? (_isAtrasada ? AppColors.red : AppColors.accent)
-                      : AppColors.accent,
+            // Checkbox — toque para concluir (apenas tarefas pendentes)
+            GestureDetector(
+              onTap: _isPendente ? widget.onConcluir : null,
+              behavior: HitTestBehavior.opaque,
+              // Padding amplia a área de toque sem deslocar o layout
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 8, 8),
+                child: Container(
+                  margin: const EdgeInsets.only(top: 1),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: _isPendente
+                        ? (_isAtrasada ? AppColors.redBg : AppColors.accentBg)
+                        : AppColors.accentBg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _isPendente
+                          ? (_isAtrasada ? AppColors.red : AppColors.accent)
+                          : AppColors.accent,
+                    ),
+                  ),
+                  child: _isPendente
+                      ? null
+                      : const Icon(
+                          Icons.check_rounded,
+                          color: AppColors.accent,
+                          size: 13,
+                        ),
                 ),
               ),
-              child: _isPendente
-                  ? null
-                  : const Icon(
-                      Icons.check_rounded,
-                      color: AppColors.accent,
-                      size: 13,
-                    ),
             ),
 
-            const SizedBox(width: 12),
+            const SizedBox(width: 4),
 
             Expanded(
               child: Column(

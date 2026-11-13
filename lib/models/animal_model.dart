@@ -5,6 +5,7 @@ class AnimalModel {
   final String raca;
   final double pesoAtual;
   final DateTime dataNascimento;
+  final String propriedadeId;
   final String? fotoUrl;
 
   AnimalModel({
@@ -14,6 +15,7 @@ class AnimalModel {
     required this.raca,
     required this.pesoAtual,
     required this.dataNascimento,
+    required this.propriedadeId,
     this.fotoUrl,
   });
 
@@ -25,6 +27,7 @@ class AnimalModel {
       raca: map['raca'] ?? '',
       pesoAtual: (map['pesoAtual'] ?? 0).toDouble(),
       dataNascimento: DateTime.parse(map['dataNascimento']),
+      propriedadeId: map['propriedadeId'] ?? '',
       fotoUrl: map['fotoUrl'],
     );
   }
@@ -36,6 +39,7 @@ class AnimalModel {
       'raca': raca,
       'pesoAtual': pesoAtual,
       'dataNascimento': dataNascimento.toIso8601String(),
+      'propriedadeId': propriedadeId,
       'fotoUrl': fotoUrl,
     };
   }
