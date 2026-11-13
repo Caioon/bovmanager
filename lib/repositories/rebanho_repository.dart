@@ -50,9 +50,9 @@ class RebanhoRepository {
   // Busca pontual
   // ---------------------------------------------------------------------------
   Future<List<RebanhoModel>> listar(String propriedadeId) async {
-    final snap = await _col(propriedadeId)
-        .orderBy('dataCadastro', descending: true)
-        .get();
+    final snap = await _col(
+      propriedadeId,
+    ).orderBy('dataCadastro', descending: true).get();
     return snap.docs
         .map((doc) => RebanhoModel.fromMap(doc.data(), doc.id))
         .toList();
@@ -74,10 +74,7 @@ class RebanhoRepository {
     required String novoPastoId,
     required WriteBatch batch,
   }) {
-    batch.update(
-      _col(propriedadeId).doc(rebanhoId),
-      {'pastoId': novoPastoId},
-    );
+    batch.update(_col(propriedadeId).doc(rebanhoId), {'pastoId': novoPastoId});
   }
 
   // ---------------------------------------------------------------------------

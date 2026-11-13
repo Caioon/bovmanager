@@ -38,16 +38,15 @@ class FakeAnimaisNotifier extends AnimaisViewModel {
 // ---------------------------------------------------------------------------
 
 PastoModel _fakePasto(String id) => PastoModel(
-      id: id,
-      nome: 'Pasto $id',
-      propriedadeId: 'prop-1',
-      area: 10.0,
-      descricao: 'Descrição $id',
-    );
+  id: id,
+  nome: 'Pasto $id',
+  propriedadeId: 'prop-1',
+  area: 10.0,
+  descricao: 'Descrição $id',
+);
 
 /// Suprime erros de overflow de layout para que não falhem os testes.
-/// O overflow ocorre porque showModalBottomSheet sem isScrollControlled
-/// limita a ~50% da tela — irrelevante para os comportamentos testados.
+/// Overflows de layout são irrelevantes para os comportamentos testados aqui.
 void _ignorarOverflow() {
   final original = FlutterError.onError!;
   FlutterError.onError = (details) {
@@ -68,18 +67,19 @@ Widget buildScreen({
       pastosListaPropEmVisualizacaoProvider.overrideWith(
         (ref) => Future.value(pastos),
       ),
-      rebanhoListaProvider.overrideWith(
-        (ref) => Stream.value(rebanhos),
-      ),
-      historicoAnimalListaProvider.overrideWith(
-        (ref) => Stream.value([]),
-      ),
+      rebanhoListaProvider.overrideWith((ref) => Stream.value(rebanhos)),
+      historicoAnimalListaProvider.overrideWith((ref) => Stream.value([])),
     ],
     child: MaterialApp(
       home: Builder(
         builder: (context) => Scaffold(
           body: ElevatedButton(
-            onPressed: () => showAtualizarHistoricoModal(context, temRebanho),
+            onPressed: () => showAtualizarHistoricoModal(
+              context,
+              temRebanho: temRebanho,
+              podeMovimentarRebanho: true,
+              podeMudarPasto: true,
+            ),
             child: const Text('Abrir Modal'),
           ),
         ),
@@ -106,7 +106,7 @@ void main() {
       await tester.pumpWidget(buildScreen());
       await abrirModal(tester);
 
-      expect(find.text('O que deseja registrar?'), findsOneWidget);
+      expect(find.text('Registrar alteração'), findsOneWidget);
     });
 
     // 2. Widgets principais ──────────────────────────────────────────────────
@@ -116,35 +116,42 @@ void main() {
       await tester.pumpWidget(buildScreen(temRebanho: true));
       await abrirModal(tester);
 
-      expect(find.text('O que deseja registrar?'), findsOneWidget);
-      expect(find.text('Pesagem'), findsOneWidget);
-      expect(find.text('Registrar novo peso do animal'), findsOneWidget);
-      expect(find.text('Movimentação'), findsNWidgets(3));
+      expect(find.text('Registrar alteração'), findsOneWidget);
+
+      // Seção de pesagem
+      expect(find.text('PESAGEM'), findsOneWidget);
+      expect(find.text('Registrar peso'), findsOneWidget);
+      expect(find.text('Atualizar o peso do animal'), findsOneWidget);
+
+      // Seção de movimentação
+      expect(find.text('MOVIMENTAÇÃO'), findsOneWidget);
       expect(find.text('Mudar de rebanho'), findsOneWidget);
-      expect(find.text('Sair do rebanho e mudar o pasto'), findsOneWidget);
-      expect(find.text('Sair do rebanho e ficar no pasto'), findsOneWidget);
+      expect(find.text('Vai para o pasto do rebanho'), findsOneWidget);
+      expect(find.text('Mudar para outro pasto'), findsOneWidget);
+      expect(find.text('Sai do rebanho e muda de pasto'), findsOneWidget);
+      expect(find.text('Sair do rebanho'), findsOneWidget);
+      expect(find.text('Permanece no mesmo pasto'), findsOneWidget);
     });
 
     // 3. Comportamento básico ────────────────────────────────────────────────
     testWidgets(
-        'ao tocar em Pesagem com menos de 2 pastos exibe snackbar de erro',
-        (tester) async {
-      _ignorarOverflow();
+      'ao tocar em Registrar peso fecha o modal e abre a tela de pesagem',
+      (tester) async {
+        _ignorarOverflow();
 
-      await tester.pumpWidget(
-        buildScreen(pastos: [_fakePasto('1')]),
-      );
-      await abrirModal(tester);
+        await tester.pumpWidget(buildScreen());
+        await abrirModal(tester);
 
-      await tester.tap(find.text('Pesagem'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Registrar peso'));
+        await tester.pumpAndSettle();
 
-      expect(
-        find.text(
-          'Cadastre ao menos 2 pastos para registrar uma movimentação.',
-        ),
-        findsOneWidget,
-      );
-    });
+        // Modal fechou
+        expect(find.text('Registrar alteração'), findsNothing);
+
+        // Tela de pesagem aberta (título + botão têm o mesmo texto)
+        expect(find.text('Registrar Pesagem'), findsWidgets);
+        expect(find.text('NOVO PESO (KG)'), findsOneWidget);
+      },
+    );
   });
 }

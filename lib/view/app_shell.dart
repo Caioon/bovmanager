@@ -14,6 +14,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // SHELL
 // =============================================================================
 
+/// Aba atual do AppShell (0 = Dashboard, 1 = Propriedades, 2 = Animais, 3 = Perfil).
+/// Qualquer tela pode trocar de aba: abaAtualShell.value = 2;
+final ValueNotifier<int> abaAtualShell = ValueNotifier<int>(0);
+
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -22,8 +26,6 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  int _index = 0;
-
   /// Evita reagendar notificações mais de uma vez por sessão por propriedade.
   /// É resetado sempre que a propriedade selecionada muda, garantindo que
   /// tarefas de uma nova propriedade também sejam sincronizadas.
@@ -112,12 +114,15 @@ class _AppShellState extends ConsumerState<AppShell> {
       }
     });
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(index: _index, children: _telas),
-      bottomNavigationBar: _BovBottomNav(
-        indexAtual: _index,
-        onTap: (i) => setState(() => _index = i),
+    return ValueListenableBuilder<int>(
+      valueListenable: abaAtualShell,
+      builder: (context, index, _) => Scaffold(
+        backgroundColor: AppColors.background,
+        body: IndexedStack(index: index, children: _telas),
+        bottomNavigationBar: _BovBottomNav(
+          indexAtual: index,
+          onTap: (i) => abaAtualShell.value = i,
+        ),
       ),
     );
   }

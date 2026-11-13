@@ -10,6 +10,10 @@ class HistoricoAnimalModel {
   final String? rebanhoOrigemId;
   final String? rebanhoDestinoId;
   final DateTime data;
+  final String? nomePastoOrigem;
+  final String? nomePastoDestino;
+  final String? nomeRebanhoOrigem;
+  final String? nomeRebanhoDestino;
 
   HistoricoAnimalModel({
     required this.id,
@@ -21,6 +25,10 @@ class HistoricoAnimalModel {
     this.rebanhoOrigemId,
     this.rebanhoDestinoId,
     required this.data,
+    this.nomePastoOrigem,
+    this.nomePastoDestino,
+    this.nomeRebanhoOrigem,
+    this.nomeRebanhoDestino,
   });
 
   factory HistoricoAnimalModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -34,6 +42,10 @@ class HistoricoAnimalModel {
       rebanhoOrigemId: map['rebanhoOrigemId'],
       rebanhoDestinoId: map['rebanhoDestinoId'],
       data: DateTime.parse(map['data']),
+      nomePastoOrigem: map['nomePastoOrigem'] as String?,
+      nomePastoDestino: map['nomePastoDestino'] as String?,
+      nomeRebanhoOrigem: map['nomeRebanhoOrigem'] as String?,
+      nomeRebanhoDestino: map['nomeRebanhoDestino'] as String?,
     );
   }
 
@@ -47,6 +59,10 @@ class HistoricoAnimalModel {
       'rebanhoOrigemId': rebanhoOrigemId,
       'rebanhoDestinoId': rebanhoDestinoId,
       'data': data.toIso8601String(),
+      'nomePastoOrigem': nomePastoOrigem,
+      'nomePastoDestino': nomePastoDestino,
+      'nomeRebanhoOrigem': nomeRebanhoOrigem,
+      'nomeRebanhoDestino': nomeRebanhoDestino,
     };
   }
 }

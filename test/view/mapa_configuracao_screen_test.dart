@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
 import 'package:bov_manager/view/mapa_configuracao_screen.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,6 +20,19 @@ final fakeProprieddade = PropriedadeModel(
 );
 
 // ── Fake ────────────────────────────────────────────────────────────────────
+
+// PNG de 1x1 pixel transparente, em Base64. Evita requisições de rede.
+final _pngTransparente = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// TileProvider falso: devolve sempre a mesma imagem em memória,
+/// sem acessar o tile.openstreetmap.org.
+class FakeTileProvider extends TileProvider {
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) =>
+      MemoryImage(_pngTransparente);
+}
 
 class FakePropriedadeSelecionadaNotifier extends PropriedadeSelecionada {
   final AsyncValue<PropriedadeModel?> estadoInicial;
@@ -42,7 +58,9 @@ Widget buildScreen({AsyncValue<PropriedadeModel?> propriedade = const AsyncData(
         () => FakePropriedadeSelecionadaNotifier(estadoInicial: propriedade),
       ),
     ],
-    child: const MaterialApp(home: MapaConfiguracaoScreen()),
+    child: MaterialApp(
+      home: MapaConfiguracaoScreen(tileProvider: FakeTileProvider()),
+    ),
   );
 }
 
@@ -56,8 +74,8 @@ void main() {
       await tester.pumpWidget(
         buildScreen(propriedade: AsyncData(fakeProprieddade)),
       );
-      // pump sem settle: TileLayer faz requisições de rede que nunca completam
-      // no ambiente de teste — pumpAndSettle entraria em loop infinito.
+      // Os tiles vêm do FakeTileProvider (sem rede). Mantemos pump() simples,
+      // pois o mapa possui animações (fadeIn) e não precisa de settle.
       await tester.pump();
 
       expect(tester.takeException(), isNull);

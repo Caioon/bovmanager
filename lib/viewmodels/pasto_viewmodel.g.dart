@@ -217,7 +217,7 @@ final class PastosViewModelProvider
   }
 }
 
-String _$pastosViewModelHash() => r'eb01fefc48004f29258d1ae025d7d6d2352324ae';
+String _$pastosViewModelHash() => r'3b457f5e2bde499c03b55a8057baca6b0bab8d88';
 
 abstract class _$PastosViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

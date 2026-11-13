@@ -20,9 +20,15 @@ class DetalhesPropriedadeScreen extends ConsumerStatefulWidget {
 
 class _DetalhesPropriedadeScreenState
     extends ConsumerState<DetalhesPropriedadeScreen> {
+  late final PropriedadeEmVisualizacao _propriedadeEmVisualizacaoNotifier;
+
   @override
   void initState() {
     super.initState();
+
+    _propriedadeEmVisualizacaoNotifier = ref.read(
+      propriedadeEmVisualizacaoProvider.notifier,
+    );
 
     ref.listenManual(propriedadesViewModelProvider, (_, next) {
       next.whenOrNull(
@@ -35,7 +41,13 @@ class _DetalhesPropriedadeScreenState
 
   @override
   void dispose() {
-    ref.read(propriedadeEmVisualizacaoProvider.notifier).fechar();
+    // Não altera o provider de forma síncrona aqui: esta tela observa
+    // propriedadeEmVisualizacaoProvider (e providers derivados dele), então
+    // mudar o estado durante o dispose notifica o próprio elemento, que já
+    // está "defunct" mas ainda tem as assinaturas abertas. Adiar para o fim do
+    // microtask garante que o Riverpod já fechou essas assinaturas.
+    final notifier = _propriedadeEmVisualizacaoNotifier;
+    Future.microtask(notifier.fechar);
     super.dispose();
   }
 
@@ -58,6 +70,8 @@ class _DetalhesPropriedadeScreenState
     final totalAnimais = animaisAsync.value?.length ?? 0;
     final totalPastos = pastosAsync.value?.length ?? 0;
     final totalRebanhos = rebanhoAsync.value?.length ?? 0;
+    // TODO: calcular alertas (atividades cuja data para finalizar é anterior a data de hoje)
+    const totalAlertas = 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -70,34 +84,40 @@ class _DetalhesPropriedadeScreenState
               child: Row(
                 children: [
                   BovBackButton(),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Center(
-                      child: Text(
-                        propriedadeAtual.nome,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'DM Sans',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          propriedadeAtual.nome,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'DM Sans',
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () =>
                         _showActionsMenu(context, ref, propriedadeAtual),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: AppColors.card,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: const Icon(
-                        Icons.more_horiz_rounded,
-                        color: AppColors.text2,
+                        Icons.edit_outlined,
+                        color: AppColors.text,
                         size: 20,
                       ),
                     ),
@@ -109,131 +129,110 @@ class _DetalhesPropriedadeScreenState
             // ── Corpo ─────────────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Card de info principal
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
+                    Text(
+                      'Cadastrada em $dataCadastro',
+                      style: const TextStyle(
+                        color: AppColors.text4,
+                        fontSize: 13,
+                        fontFamily: 'DM Sans',
                       ),
-                      child: Row(
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Botões de mapa ────────────────────────────────────
+                    if (!propriedadeAtual.temCentroDefinido)
+                      _MapButton(
+                        label: 'Adicionar mapa para propriedade',
+                        icon: Icons.add_location_alt_outlined,
+                        destacado: true,
+                        onTap: () => AppCoordinator.goToConfigurarMapa(
+                          context,
+                          emVisualizacao: true,
+                        ),
+                      )
+                    else
+                      Row(
                         children: [
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.accentBg,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.home_work_rounded,
-                              color: AppColors.accent,
-                              size: 26,
+                          Expanded(
+                            child: _MapButton(
+                              label: 'Ajustar mapa',
+                              icon: Icons.settings_outlined,
+                              onTap: () => AppCoordinator.goToConfigurarMapa(
+                                context,
+                                emVisualizacao: true,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                propriedadeAtual.nome,
-                                style: const TextStyle(
-                                  color: AppColors.text,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'DM Sans',
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Cadastrada em $dataCadastro',
-                                style: const TextStyle(
-                                  color: AppColors.text4,
-                                  fontSize: 12,
-                                  fontFamily: 'DM Sans',
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _MapButton(
+                              label: 'Ver mapa',
+                              icon: Icons.map_outlined,
+                              destacado: true,
+                              onTap: () =>
+                                  AppCoordinator.goToMapa(context, emVisualizacao: true),
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                    const SizedBox(height: 20),
 
-                    // Métricas — dependem de subcoleções futuras
-                    const _SectionTitle(title: 'RESUMO'),
                     Row(
                       children: [
-                        _MetricTile(
-                          value: totalPastos.toString(),
-                          label: 'Pastos',
-                        ),
-                        const SizedBox(width: 10),
-                        _MetricTile(
-                          value: totalRebanhos.toString(),
-                          label: 'Rebanhos',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _MetricTile(
-                          value: totalAnimais.toString(),
+                        _MetricItem(
+                          value: animaisAsync.isLoading
+                              ? '—'
+                              : totalAnimais.toString(),
                           label: 'Animais',
+                          onTap: () {},
                         ),
                         const SizedBox(width: 10),
-                        _MetricTile(
-                          // TODO: calcular alertas (ex: superlotação de pastos)
-                          value: '-',
-                          label: 'Alertas',
+                        _MetricItem(
+                          value: rebanhoAsync.isLoading
+                              ? '—'
+                              : totalRebanhos.toString(),
+                          label: 'Rebanhos',
+                          onTap: () =>
+                              AppCoordinator.goToListaRebanhos(context),
                         ),
-                      ],
-                    ),
-
-                    // Atalhos rápidos
-                    const _SectionTitle(title: 'ATALHOS RÁPIDOS'),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 2.8,
-                      children: [
-                        _ShortcutCard(
-                          icon: Icons.map_outlined,
-                          label: 'Mapa',
-                          iconBgColor: AppColors.accentBg,
-                          iconColor: AppColors.accent,
-                          onTap: () => AppCoordinator.goToMapa(context),
-                        ),
-                        _ShortcutCard(
-                          icon: Icons.grass_rounded,
+                        const SizedBox(width: 10),
+                        _MetricItem(
+                          value: pastosAsync.isLoading
+                              ? '—'
+                              : totalPastos.toString(),
                           label: 'Pastos',
-                          iconBgColor: AppColors.accentBg,
-                          iconColor: AppColors.accent,
                           onTap: () => AppCoordinator.goToListaPastos(context),
                         ),
-                        _ShortcutCard(
-                          icon: Icons.groups_outlined,
-                          label: 'Rebanhos',
-                          onTap: () {
-                            AppCoordinator.goToListaRebanhos(context);
-                          },
-                        ),
-                        _ShortcutCard(
-                          icon: Icons.upload_file_rounded,
-                          label: 'Relatório',
-                          onTap: () {
-                            // TODO: AppCoordinator.goToRelatorio(context, propriedadeAtual);
-                          },
+                        const SizedBox(width: 10),
+                        _MetricItem(
+                          value: totalAlertas.toString(),
+                          label: 'Alertas',
+                          onTap: () {},
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Criar relatório ───────────────────────────────────
+                    _ReportButton(
+                      onTap: () {
+                        // TODO: AppCoordinator.goToRelatorio(context, propriedadeAtual);
+                      },
+                    ),
+
+                    // ── Alertas importantes ───────────────────────────────
+                    const _SectionTitle(title: 'Alertas importantes'),
+                    const Text(
+                      'Nenhum alerta no momento',
+                      style: TextStyle(
+                        color: AppColors.text4,
+                        fontSize: 14,
+                        fontFamily: 'DM Sans',
+                      ),
                     ),
                   ],
                 ),
@@ -244,6 +243,7 @@ class _DetalhesPropriedadeScreenState
       ),
     );
   }
+
 
   // ===========================================================================
   // MENU DE AÇÕES (···)
@@ -398,45 +398,44 @@ class _DetalhesPropriedadeScreenState
 // WIDGETS INTERNOS
 // =============================================================================
 
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({
-    required this.value,
+/// Botão largo dos mapas. [destacado] usa o tom de acento preenchido.
+class _MapButton extends StatelessWidget {
+  const _MapButton({
     required this.label,
-    // ignore: unused_element_parameter
-    this.valueColor,
+    required this.icon,
+    required this.onTap,
+    this.destacado = false,
   });
 
-  final String value;
   final String label;
-  final Color? valueColor;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool destacado;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 48,
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: destacado ? AppColors.accentBg : AppColors.background,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: destacado ? AppColors.accentBg : AppColors.accent.withAlpha(110),
+          ),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: valueColor ?? AppColors.text,
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'DM Sans',
-              ),
-            ),
-            const SizedBox(height: 2),
+            Icon(icon, color: AppColors.accent, size: 20),
+            const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
-                color: AppColors.text4,
-                fontSize: 11,
+                color: AppColors.accent,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
                 fontFamily: 'DM Sans',
               ),
             ),
@@ -447,52 +446,109 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
-class _ShortcutCard extends StatelessWidget {
-  const _ShortcutCard({
-    required this.icon,
+class _MetricItem extends StatelessWidget {
+  const _MetricItem({
+    required this.value,
     required this.label,
     required this.onTap,
-    this.iconBgColor = AppColors.border2,
-    this.iconColor = AppColors.text4,
   });
 
-  final IconData icon;
+  final String value;
   final String label;
   final VoidCallback onTap;
-  final Color iconBgColor;
-  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.text4,
+                  fontSize: 12,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card largo "Criar relatório" com chevron à direita.
+class _ReportButton extends StatelessWidget {
+  const _ReportButton({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: iconBgColor,
+                color: AppColors.accentBg,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: iconColor, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'DM Sans',
+              child: const Icon(
+                Icons.upload_file_rounded,
+                color: AppColors.accent,
+                size: 20,
               ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Text(
+                'Criar relatório',
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.text2,
+              size: 22,
             ),
           ],
         ),
@@ -503,19 +559,19 @@ class _ShortcutCard extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
+
   final String title;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 12),
+      padding: const EdgeInsets.only(top: 24, bottom: 8),
       child: Text(
         title,
         style: const TextStyle(
-          color: AppColors.text4,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.0,
+          color: AppColors.text,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
           fontFamily: 'DM Sans',
         ),
       ),

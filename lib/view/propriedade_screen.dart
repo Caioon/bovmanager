@@ -39,18 +39,27 @@ class PropriedadesScreen extends ConsumerWidget {
     final compartilhadasAsync = ref.watch(propriedadesCompartilhadasIdsProvider);
     final idsCompartilhadas = compartilhadasAsync.value ?? {};
 
+    // Sem propriedades: exibe só o empty state (sem header), como no dashboard
+    if (listaState.hasValue && (listaState.value?.isEmpty ?? false)) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const SafeArea(child: _EmptyState()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             // ── Header ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: SizedBox(
+                height: 36,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
                     'Propriedades',
                     style: TextStyle(
                       color: AppColors.text,
@@ -59,26 +68,7 @@ class PropriedadesScreen extends ConsumerWidget {
                       fontFamily: 'DM Sans',
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      AppCoordinator.goToNovaPropriedade(context);
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(
-                        Icons.add_rounded,
-                        color: AppColors.text2,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
 
@@ -97,9 +87,7 @@ class PropriedadesScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                data: (lista) => lista.isEmpty
-                    ? _EmptyState()
-                    : ListView.separated(
+                data: (lista) => ListView.separated(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                         itemCount: lista.length + 1,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -255,55 +243,55 @@ class _PropriedadeCard extends StatelessWidget {
 // =============================================================================
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.accentBg,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.home_work_outlined,
-              color: AppColors.accent,
-              size: 34,
-            ),
+    return Column(
+      children: [
+        const SizedBox(height: 60),
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.accentBg,
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'Nenhuma propriedade',
-            style: TextStyle(
-              color: AppColors.text,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'DM Sans',
-            ),
+          child: const Icon(
+            Icons.home_work_outlined,
+            color: AppColors.accent,
+            size: 34,
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Adicione sua primeira fazenda para\ncomeçar a gerenciar seu rebanho.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.text4,
-              fontSize: 13,
-              fontFamily: 'DM Sans',
-            ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Nenhuma propriedade',
+          style: TextStyle(
+            color: AppColors.text,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'DM Sans',
           ),
-          const SizedBox(height: 28),
-          BovPrimaryButton(
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Adicione sua primeira fazenda para\ncomeçar a gerenciar seu rebanho.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.text4,
+            fontSize: 13,
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 28),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: BovPrimaryButton(
             label: 'Adicionar Propriedade',
-            onPressed: () {
-              AppCoordinator.goToNovaPropriedade(context);
-            },
+            onPressed: () => AppCoordinator.goToNovaPropriedade(context),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

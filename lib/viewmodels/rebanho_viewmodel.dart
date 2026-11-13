@@ -24,7 +24,6 @@ class RebanhoEmVisualizacao extends _$RebanhoEmVisualizacao {
 // LISTA DE REBANHOS — propriedade em visualização
 // =============================================================================
 
-//LISTA DE REBANHOS DA PROPRIEDADE EM VISUALIZAÇÃO
 @riverpod
 Stream<List<RebanhoModel>> rebanhoLista(Ref ref) {
   final propriedadeId = ref.watch(propriedadeEmVisualizacaoProvider)?.id ?? '';
@@ -40,7 +39,6 @@ Stream<List<RebanhoModel>> rebanhoLista(Ref ref) {
 // LISTA DE REBANHOS — propriedade selecionada (dashboard)
 // =============================================================================
 
-//LISTA DE REBANHOS DA PROPRIEDADE SELECIONADA NO DASHBOARD
 @riverpod
 Stream<List<RebanhoModel>> rebanhosSelecionados(Ref ref) {
   final propriedadeId = ref.watch(propriedadeSelecionadaProvider).value?.id;
@@ -86,6 +84,9 @@ class RebanhoViewModel extends _$RebanhoViewModel {
     required String rebanhoId,
     required String antigoPastoId,
     required String novoPastoId,
+    String? nomePastoOrigem,
+    String? nomePastoDestino,
+    required DateTime data,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
@@ -94,16 +95,28 @@ class RebanhoViewModel extends _$RebanhoViewModel {
         propriedadeId: _propriedadeId,
         antigoPastoId: antigoPastoId,
         novoPastoId: novoPastoId,
+        nomePastoOrigem: nomePastoOrigem,
+        nomePastoDestino: nomePastoDestino,
+        data: data,
       ),
     );
   }
 
-  Future<void> apagar({required String rebanhoId}) async {
+  Future<String?> podeApagarRebanho({required String rebanhoId}) {
+    return _service.podeApagarRebanho(
+      rebanhoId: rebanhoId,
+      propriedadeId: _propriedadeId,
+    );
+  }
+
+  Future<void> apagarRebanho({required String rebanhoId}) async {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(
-      () =>
-          _service.apagar(rebanhoId: rebanhoId, propriedadeId: _propriedadeId),
+      () => _service.apagarRebanho(
+        rebanhoId: rebanhoId,
+        propriedadeId: _propriedadeId,
+      ),
     );
   }
 }

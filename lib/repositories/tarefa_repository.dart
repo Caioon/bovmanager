@@ -24,9 +24,11 @@ class TarefaRepository {
     return _col(propriedadeId)
         .orderBy('dataExecucao')
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => TarefaModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((doc) => TarefaModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   /// Cria a tarefa no Firestore e retorna o ID gerado pelo banco.

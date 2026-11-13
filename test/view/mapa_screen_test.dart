@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bov_manager/models/animal_model.dart';
 import 'package:bov_manager/models/historico_tipo.dart';
 import 'package:bov_manager/models/poligono_model.dart';
@@ -32,6 +34,19 @@ final fakePasto = PastoModel(
 
 // ── Fakes ────────────────────────────────────────────────────────────────────
 
+// PNG de 1x1 pixel transparente, em Base64. Evita requisições de rede.
+final _pngTransparente = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// TileProvider falso: devolve sempre a mesma imagem em memória,
+/// sem acessar o tile.openstreetmap.org.
+class FakeTileProvider extends TileProvider {
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) =>
+      MemoryImage(_pngTransparente);
+}
+
 class FakePropriedadeSelecionadaNotifier extends PropriedadeSelecionada {
   final AsyncValue<PropriedadeModel?> estadoInicial;
 
@@ -55,8 +70,8 @@ class FakePoligonoViewModelNotifier extends PoligonoViewModel {
   Future<bool> salvar({
     required String pastoId,
     required List<LatLngPoint> pontos,
-  }) async =>
-      true;
+    String? propriedadeId,
+  }) async => true;
 
   @override
   Future<void> apagar({required String pastoId}) async {}
@@ -72,8 +87,7 @@ class FakeAnimalService implements AnimalService {
   Future<int> contarAnimaisPorPasto({
     required String propriedadeId,
     required String pastoId,
-  }) =>
-      Future.value(0);
+  }) => Future.value(0);
 
   @override
   Future<void> criar({
@@ -82,9 +96,11 @@ class FakeAnimalService implements AnimalService {
     required String raca,
     required double novoPeso,
     required DateTime dataNascimento,
-    required String? rebanhoId,
+    required String? rebanhoDestinoId,
+    required String? nomeRebanhoDestino,
     required String propriedadeId,
-    String? pastoDestinoId,
+    required String pastoDestinoId,
+    required String nomePastoDestino,
     String? fotoUrl,
   }) async {}
 
@@ -132,17 +148,13 @@ Widget buildScreen({
       pastosListaPropSelecionadaProvider.overrideWith(
         (ref) => Future.value(pastos),
       ),
-      poligonosListaProvider.overrideWith(
-        (ref) => Stream.value([]),
-      ),
+      poligonosListaProvider.overrideWith((ref) => Stream.value([])),
       poligonoViewModelProvider.overrideWith(
         () => FakePoligonoViewModelNotifier(),
       ),
-      animalServiceProvider.overrideWith(
-        (ref) => FakeAnimalService(),
-      ),
+      animalServiceProvider.overrideWith((ref) => FakeAnimalService()),
     ],
-    child: const MaterialApp(home: MapaScreen()),
+    child: MaterialApp(home: MapaScreen(tileProvider: FakeTileProvider())),
   );
 }
 
@@ -151,8 +163,9 @@ Widget buildScreen({
 void main() {
   group('MapaScreen', () {
     // 1. Smoke test
-    testWidgets('renderiza sem crashar com propriedade carregada',
-        (tester) async {
+    testWidgets('renderiza sem crashar com propriedade carregada', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildScreen(propriedade: AsyncData(fakeProprieddade)),
       );
@@ -174,17 +187,18 @@ void main() {
 
     // 3. Comportamento básico — subtítulo de desenho ausente no estado inicial
     testWidgets(
-        'não exibe subtítulo de modo de desenho enquanto _modoDesenho é false',
-        (tester) async {
-      await tester.pumpWidget(
-        buildScreen(
-          propriedade: AsyncData(fakeProprieddade),
-          pastos: [fakePasto],
-        ),
-      );
-      await tester.pump();
+      'não exibe subtítulo de modo de desenho enquanto _modoDesenho é false',
+      (tester) async {
+        await tester.pumpWidget(
+          buildScreen(
+            propriedade: AsyncData(fakeProprieddade),
+            pastos: [fakePasto],
+          ),
+        );
+        await tester.pump();
 
-      expect(find.textContaining('Desenhando:'), findsNothing);
-    });
+        expect(find.textContaining('Desenhando:'), findsNothing);
+      },
+    );
   });
 }

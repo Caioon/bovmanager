@@ -1,8 +1,11 @@
 import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
+import 'package:bov_manager/models/poligono_model.dart';
 import 'package:bov_manager/models/propriedade_model.dart';
 import 'package:bov_manager/repositories/propriedade_repository.dart';
+import 'package:bov_manager/services/propriedade_service.dart';
+import 'package:bov_manager/viewmodels/poligono_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -19,7 +22,20 @@ import 'package:latlong2/latlong.dart';
 //   4. Confirma com "Salvar" ou descarta com "Cancelar"
 
 class MapaConfiguracaoScreen extends ConsumerStatefulWidget {
-  const MapaConfiguracaoScreen({super.key});
+  const MapaConfiguracaoScreen({
+    super.key,
+    this.emVisualizacao = false,
+    this.tileProvider,
+  });
+
+  /// true = configura a propriedade em visualização (detalhes);
+  /// false = configura a propriedade selecionada (dashboard).
+  final bool emVisualizacao;
+
+  /// Provider de tiles do mapa. Usado apenas em testes, para evitar
+  /// requisições de rede. Quando null (caso do app), o TileLayer usa o
+  /// comportamento padrão (NetworkTileProvider), sem nenhuma mudança.
+  final TileProvider? tileProvider;
 
   @override
   ConsumerState<MapaConfiguracaoScreen> createState() =>
@@ -42,12 +58,38 @@ class _MapaConfiguracaoScreenState
   // Coordenada inicial — Brasil ou centro já salvo na propriedade
   late LatLng _coordenadaInicial;
 
+  String? _cidadeCentroAtual;
+
   @override
   void dispose() {
     _buscaController.dispose();
     _latController.dispose();
     _lngController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _buscarCidadeProxima(LatLng ponto) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(
+        ponto.latitude,
+        ponto.longitude,
+      );
+      if (placemarks.isEmpty) return null;
+      final p = placemarks.first;
+      final cidade = [
+        p.subAdministrativeArea,
+        p.administrativeArea,
+      ].where((s) => s != null && s.isNotEmpty).join(', ');
+      return cidade.isEmpty ? null : cidade;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _carregarCidadeCentroAtual(LatLng ponto) async {
+    final cidade = await _buscarCidadeProxima(ponto);
+    if (!mounted) return;
+    setState(() => _cidadeCentroAtual = cidade);
   }
 
   // ── Busca por nome de cidade/estado ───────────────────────────────────────
@@ -98,6 +140,30 @@ class _MapaConfiguracaoScreenState
     _mapController.move(LatLng(lat, lng), 14);
   }
 
+  AsyncValue<List<PoligonoModel>> _watchPoligonos() => widget.emVisualizacao
+      ? ref.watch(poligonosListaPropEmVisProvider)
+      : ref.watch(poligonosListaProvider);
+
+  Marker _marcador(LatLng ponto, Color cor) {
+    return Marker(
+      point: ponto,
+      width: 32,
+      height: 32,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cor,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.onAccent, width: 2),
+        ),
+        child: const Icon(
+          Icons.place_rounded,
+          color: AppColors.onAccent,
+          size: 16,
+        ),
+      ),
+    );
+  }
+
   // ── Salva o centro no Firestore ───────────────────────────────────────────
 
   Future<void> _salvar(PropriedadeModel propriedade) async {
@@ -108,20 +174,7 @@ class _MapaConfiguracaoScreenState
 
     setState(() => _isLoading = true);
 
-    String? cidadeProxima;
-    try {
-      final placemarks = await placemarkFromCoordinates(
-        _pontoSelecionado!.latitude,
-        _pontoSelecionado!.longitude,
-      );
-      if (placemarks.isNotEmpty) {
-        final p = placemarks.first;
-        cidadeProxima = [
-          p.subAdministrativeArea,
-          p.administrativeArea,
-        ].where((s) => s != null && s.isNotEmpty).join(', ');
-      }
-    } catch (_) {}
+    final cidadeProxima = await _buscarCidadeProxima(_pontoSelecionado!);
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -132,6 +185,7 @@ class _MapaConfiguracaoScreenState
         lat: _pontoSelecionado!.latitude,
         lng: _pontoSelecionado!.longitude,
         cidadeProxima: cidadeProxima,
+        avisoRedefinicao: propriedade.temCentroDefinido,
       ),
     );
 
@@ -146,6 +200,20 @@ class _MapaConfiguracaoScreenState
             lat: _pontoSelecionado!.latitude,
             lng: _pontoSelecionado!.longitude,
           );
+
+      // A propriedade em visualização é uma cópia local: recarrega do banco
+      // para que a tela de detalhes já exiba o centro salvo.
+      if (widget.emVisualizacao) {
+        final atualizada = await ref
+            .read(propriedadeServiceProvider)
+            .buscarPorId(propriedadeId: propriedade.id);
+        if (atualizada != null) {
+          ref
+              .read(propriedadeEmVisualizacaoProvider.notifier)
+              .abrir(atualizada);
+        }
+      }
+
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       setState(() => _erro = 'Erro ao salvar. Tente novamente.');
@@ -156,7 +224,11 @@ class _MapaConfiguracaoScreenState
 
   @override
   Widget build(BuildContext context) {
-    final propriedadeAsync = ref.watch(propriedadeSelecionadaProvider);
+    final AsyncValue<PropriedadeModel?> propriedadeAsync = widget.emVisualizacao
+        ? AsyncData(ref.watch(propriedadeEmVisualizacaoProvider))
+        : ref.watch(propriedadeSelecionadaProvider);
+
+    final poligonosAsync = _watchPoligonos();
 
     return propriedadeAsync.when(
       loading: () =>
@@ -176,6 +248,10 @@ class _MapaConfiguracaoScreenState
               : const LatLng(-15.7801, -47.9292);
           if (propriedade.temCentroDefinido) {
             _pontoSelecionado = _coordenadaInicial;
+            final centroAtual = _coordenadaInicial;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _carregarCidadeCentroAtual(centroAtual),
+            );
           }
           _inicializado = true;
         }
@@ -192,10 +268,12 @@ class _MapaConfiguracaoScreenState
                     children: [
                       BovBackButton(),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Definir Centro do Mapa',
-                          style: TextStyle(
+                          propriedade.temCentroDefinido
+                              ? 'Redefinir centro do mapa'
+                              : 'Definir Centro do Mapa',
+                          style: const TextStyle(
                             color: AppColors.text,
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
@@ -388,40 +466,77 @@ class _MapaConfiguracaoScreenState
                           urlTemplate:
                               'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.bov_manager',
+                          tileProvider: widget.tileProvider,
                           keepBuffer: 4,
                           tileDisplay: const TileDisplay.fadeIn(),
                         ),
 
-                        // Marcador do ponto selecionado
-                        if (_pontoSelecionado != null)
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                point: _pontoSelecionado!,
-                                width: 32,
-                                height: 32,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accent,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.onAccent,
-                                      width: 2,
+                        // Pastos já desenhados (sempre verdes, sem lotação)
+                        poligonosAsync.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, _) => const SizedBox.shrink(),
+                          data: (poligonos) => PolygonLayer(
+                            polygons: poligonos
+                                .map(
+                                  (pol) => Polygon(
+                                    points: pol.pontos
+                                        .map((p) => LatLng(p.lat, p.lng))
+                                        .toList(),
+                                    // ignore: deprecated_member_use
+                                    color: AppColors.pastoVerde.withOpacity(
+                                      0.25,
                                     ),
+                                    borderColor: AppColors.pastoVerde,
+                                    borderStrokeWidth: 2.5,
                                   ),
-                                  child: const Icon(
-                                    Icons.place_rounded,
-                                    color: AppColors.onAccent,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                            ],
+                                )
+                                .toList(),
                           ),
+                        ),
+
+                        MarkerLayer(
+                          markers: [
+                            if (propriedade.temCentroDefinido)
+                              _marcador(
+                                LatLng(
+                                  propriedade.centroLat!,
+                                  propriedade.centroLng!,
+                                ),
+                                AppColors.pastoCinza,
+                              ),
+                            if (_pontoSelecionado != null &&
+                                (!propriedade.temCentroDefinido ||
+                                    _pontoSelecionado !=
+                                        LatLng(
+                                          propriedade.centroLat!,
+                                          propriedade.centroLng!,
+                                        )))
+                              _marcador(
+                                _pontoSelecionado!,
+                                AppColors.pastoVerde,
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ),
+
+                if (propriedade.temCentroDefinido && _cidadeCentroAtual != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        'Centro atual: próximo de $_cidadeCentroAtual',
+                        style: const TextStyle(
+                          color: AppColors.text2,
+                          fontSize: 13,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // ── Botões ─────────────────────────────────────────────────
                 Padding(

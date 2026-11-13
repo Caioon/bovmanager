@@ -104,7 +104,7 @@ class PastosViewModel extends _$PastosViewModel {
       ref.invalidate(pastosListaPropEmVisualizacaoProvider);
       state = const AsyncData(null);
     } catch (e, st) {
-      state = AsyncError(e, st);
+      if (ref.mounted) state = AsyncError(e, st);
     }
   }
 }

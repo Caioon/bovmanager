@@ -1,7 +1,9 @@
 import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
+import 'package:bov_manager/models/pasto_model.dart';
 import 'package:bov_manager/models/rebanho_model.dart';
+import 'package:bov_manager/services/rebanho_service.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
@@ -16,29 +18,26 @@ class ListaRebanhoScreen extends ConsumerStatefulWidget {
 }
 
 class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
-  /// Mapa {pastoId → nomePasto} carregado uma vez para montar os subtítulos.
-  late Future<Map<String, String>> _pastoNomesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _pastoNomesFuture = _carregarNomesPastos();
+  /// Monta o mapa {pastoId → nomePasto} a partir do estado atual do provider.
+  /// Como é derivado de um `watch`, atualiza sozinho quando um pasto é criado.
+  Map<String, String> _nomesPastos(AsyncValue<List<PastoModel>> pastosAsync) {
+    return {for (final p in pastosAsync.value ?? <PastoModel>[]) p.id: p.nome};
   }
 
-  Future<Map<String, String>> _carregarNomesPastos() async {
-    final propriedadeId = ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
-    if (propriedadeId.isEmpty) return {};
-    try {
-      final pastos = await ref.read(pastosListaPropEmVisualizacaoProvider.future);
-      return {for (final p in pastos) p.id: p.nome};
-    } catch (_) {
-      return {};
-    }
+  String _nomeDoPasto(
+    AsyncValue<List<PastoModel>> pastosAsync,
+    String pastoId,
+  ) {
+    final nome = _nomesPastos(pastosAsync)[pastoId];
+    if (nome != null) return nome;
+    if (pastosAsync.isLoading && !pastosAsync.hasValue) return 'Carregando...';
+    return 'Pasto não encontrado ou apagado';
   }
 
   @override
   Widget build(BuildContext context) {
     final rebanhoListaState = ref.watch(rebanhoListaProvider);
+    final pastosAsync = ref.watch(pastosListaPropEmVisualizacaoProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -112,45 +111,39 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
                 data: (lista) {
                   if (lista.isEmpty) return const _EmptyState();
 
-                  return FutureBuilder<Map<String, String>>(
-                    future: _pastoNomesFuture,
-                    builder: (context, snapshot) {
-                      final pastoNomes = snapshot.data ?? {};
-
-                      return ListView(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              children: lista
-                                  .asMap()
-                                  .entries
-                                  .map(
-                                    (e) => _RebanhoItem(
-                                      rebanho: e.value,
-                                      isFirst: e.key == 0,
-                                      isLast: e.key == lista.length - 1,
-                                      nomePasto:
-                                          pastoNomes[e.value.pastoId] ??
-                                          e.value.pastoId,
-                                      onTap: () => _showAcoesRebanho(
-                                        context,
-                                        ref,
-                                        e.value,
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          children: lista
+                              .asMap()
+                              .entries
+                              .map(
+                                (e) => _RebanhoItem(
+                                  rebanho: e.value,
+                                  isFirst: e.key == 0,
+                                  isLast: e.key == lista.length - 1,
+                                  nomePasto: _nomeDoPasto(
+                                    pastosAsync,
+                                    e.value.pastoId,
+                                  ),
+                                  onTap: () => _showAcoesRebanho(
+                                    context,
+                                    ref,
+                                    e.value,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -230,11 +223,14 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        FutureBuilder<Map<String, String>>(
-                          future: _pastoNomesFuture,
-                          builder: (ctx, snap) {
-                            final nome =
-                                snap.data?[rebanho.pastoId] ?? rebanho.pastoId;
+                        Consumer(
+                          builder: (ctx, sheetRef, _) {
+                            final nome = _nomeDoPasto(
+                              sheetRef.watch(
+                                pastosListaPropEmVisualizacaoProvider,
+                              ),
+                              rebanho.pastoId,
+                            );
                             return Text(
                               nome,
                               style: const TextStyle(
@@ -283,65 +279,44 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
   // DIÁLOGO DE EXCLUSÃO
   // ===========================================================================
 
-  void _showConfirmarApagar(
+  Future<void> _showConfirmarApagar(
     BuildContext context,
     WidgetRef ref,
     RebanhoModel rebanho,
-  ) {
-    showDialog(
+  ) async {
+    final propriedadeId =
+        ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
+
+    final bloqueio = await ref
+        .read(rebanhoServiceProvider)
+        .podeApagarRebanho(
+          rebanhoId: rebanho.id,
+          propriedadeId: propriedadeId,
+        );
+
+    if (!context.mounted) return;
+
+    if (bloqueio != null) {
+      showBovErrorSnackBar(context, bloqueio);
+      return;
+    }
+
+    await showBovConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        title: const Text(
-          'Apagar rebanho?',
-          style: TextStyle(
-            color: AppColors.text,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'DM Sans',
-          ),
-        ),
-        content: Text(
-          'Esta ação é irreversível. O rebanho "${rebanho.nome}" será apagado permanentemente.',
-          style: const TextStyle(
-            color: AppColors.text4,
-            fontSize: 14,
-            fontFamily: 'DM Sans',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.text4, fontFamily: 'DM Sans'),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await ref
-                  .read(rebanhoViewModelProvider.notifier)
-                  .apagar(rebanhoId: rebanho.id);
-              if (context.mounted) {
-                showBovErrorSnackBar(context, 'Rebanho apagado.');
-              }
-            },
-            child: const Text(
-              'Apagar',
-              style: TextStyle(
-                color: AppColors.red,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'DM Sans',
-              ),
-            ),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline_rounded,
+      titulo: 'Apagar rebanho?',
+      descricao:
+          'Esta ação é irreversível. O rebanho será apagado permanentemente.',
+      textoConfirmar: 'Apagar',
+      destrutivo: true,
+      onConfirmar: () async {
+        await ref
+            .read(rebanhoViewModelProvider.notifier)
+            .apagarRebanho(rebanhoId: rebanho.id);
+        if (context.mounted) {
+          showBovErrorSnackBar(context, 'Rebanho apagado.');
+        }
+      },
     );
   }
 }
@@ -424,24 +399,6 @@ class _RebanhoItem extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-            ),
-
-            // Badge "Ativo"
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.accentBg,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Ativo',
-                style: TextStyle(
-                  color: AppColors.accent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'DM Sans',
-                ),
               ),
             ),
           ],

@@ -39,9 +39,11 @@ class PastoRepository {
     return _col(propriedadeId)
         .orderBy('nome')
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => PastoModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((doc) => PastoModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // ---------------------------------------------------------------------------
@@ -69,6 +71,17 @@ class PastoRepository {
     required String pastoId,
   }) async {
     await _col(propriedadeId).doc(pastoId).delete();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Apagar pasto — participa de um batch externo
+  // ---------------------------------------------------------------------------
+  void apagarEmBatch({
+    required String propriedadeId,
+    required String pastoId,
+    required WriteBatch batch,
+  }) {
+    batch.delete(_col(propriedadeId).doc(pastoId));
   }
 
   // ---------------------------------------------------------------------------

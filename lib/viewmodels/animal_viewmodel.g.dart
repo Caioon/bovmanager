@@ -178,7 +178,7 @@ final class AnimaisViewModelProvider
   }
 }
 
-String _$animaisViewModelHash() => r'c2165da50a32c09674429f84c19bf064263596b4';
+String _$animaisViewModelHash() => r'1f9f05c0a925f944609c46a5b3ecde6ee30cdb87';
 
 abstract class _$AnimaisViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

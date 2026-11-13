@@ -241,8 +241,12 @@ void main() {
         raca: 'Nelore',
         novoPeso: 400,
         dataNascimento: DateTime(2020),
-        rebanhoId: null,
+        rebanhoDestinoId: null,
+        nomeRebanhoDestino: null,
         propriedadeId: 'propriedade123',
+        pastoDestinoId: 'pasto123',
+        nomePastoDestino: 'Pasto Norte',
+        fotoUrl: null,
       );
       expect(repo.criou, true);
       expect(historicoService.criouHistorico, true);

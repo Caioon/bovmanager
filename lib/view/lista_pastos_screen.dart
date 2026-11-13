@@ -2,7 +2,9 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
+import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
+import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +14,16 @@ class ListaPastosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final listaState = ref.watch(pastosListaPropEmVisualizacaoProvider);
+
+    // Mantém o viewmodel vivo enquanto a tela existe. Sem um listener, o
+    // provider (autoDispose) é descartado durante o `await` do apagar/editar
+    // e o Ref deixa de poder ser usado. Também exibe erros do viewmodel.
+    ref.listen(pastosViewModelProvider, (_, next) {
+      if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+      next.whenOrNull(
+        error: (e, _) => showBovErrorSnackBar(context, e.toString()),
+      );
+    });
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -259,58 +271,48 @@ class ListaPastosScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     PastoModel pasto,
-  ) {
-    showDialog(
+  ) async {
+    final propriedadeId =
+        ref.read(propriedadeEmVisualizacaoProvider)?.id ?? '';
+
+    final bloqueio = await ref
+        .read(pastoServiceProvider)
+        .verificarBloqueioExclusao(
+          propriedadeId: propriedadeId,
+          pastoId: pasto.id,
+        );
+
+    if (bloqueio != null) {
+      if (context.mounted) {
+        showBovErrorSnackBar(context, bloqueio);
+      }
+      return;
+    }
+
+    final temPoligono = await ref
+        .read(pastoServiceProvider)
+        .possuiPoligono(propriedadeId: propriedadeId, pastoId: pasto.id);
+
+    if (!context.mounted) return;
+
+    showBovConfirmDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        title: const Text(
-          'Apagar pasto?',
-          style: TextStyle(
-            color: AppColors.text,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'DM Sans',
-          ),
-        ),
-        content: Text(
-          'A ação é irreversível. O pasto "${pasto.nome}" será apagado permanentemente.',
-          style: const TextStyle(
-            color: AppColors.text4,
-            fontSize: 14,
-            fontFamily: 'DM Sans',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.text4, fontFamily: 'DM Sans'),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await ref
-                  .read(pastosViewModelProvider.notifier)
-                  .apagar(pastoId: pasto.id);
-            },
-            child: const Text(
-              'Apagar',
-              style: TextStyle(
-                color: AppColors.red,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'DM Sans',
-              ),
-            ),
-          ),
-        ],
-      ),
+      icon: Icons.delete_outline_rounded,
+      titulo: 'Apagar pasto?',
+      descricao: temPoligono
+          ? 'Esta ação é irreversível. O pasto e o polígono associado a ele '
+                'no mapa serão apagados permanentemente.'
+          : 'Esta ação é irreversível. O pasto será apagado permanentemente.',
+      textoConfirmar: 'Apagar',
+      destrutivo: true,
+      onConfirmar: () async {
+        await ref
+            .read(pastosViewModelProvider.notifier)
+            .apagar(pastoId: pasto.id);
+        if (context.mounted) {
+          showBovErrorSnackBar(context, 'Pasto apagado.');
+        }
+      },
     );
   }
 }

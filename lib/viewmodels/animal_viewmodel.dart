@@ -24,6 +24,7 @@ Stream<List<AnimalModel>> animaisListaPropEmVis(Ref ref) {
 
   return ref.read(animalServiceProvider).listar(propriedadeId);
 }
+
 // =============================================================================
 // ANIMAL EM VISUALIZAÇÃO (detalhes + histórico)
 // =============================================================================
@@ -64,8 +65,10 @@ class AnimaisViewModel extends _$AnimaisViewModel {
     required String raca,
     required double pesoAtual,
     required DateTime dataNascimento,
-    required String? rebanhoId,
-    String? pastoDestinoId, // ← opcional: pasto inicial do animal
+    required String? rebanhoDestinoId,
+    required String? nomeRebanhoDestino,
+    required String pastoDestinoId,
+    required String nomePastoDestino,
   }) async {
     state = const AsyncLoading();
     try {
@@ -75,9 +78,11 @@ class AnimaisViewModel extends _$AnimaisViewModel {
         raca: raca,
         novoPeso: pesoAtual,
         dataNascimento: dataNascimento,
-        rebanhoId: rebanhoId,
-        propriedadeId: _propriedadeId, // ← usa o getter
+        rebanhoDestinoId: rebanhoDestinoId,
+        nomeRebanhoDestino: nomeRebanhoDestino,
+        propriedadeId: _propriedadeId,
         pastoDestinoId: pastoDestinoId,
+        nomePastoDestino: nomePastoDestino,
         //TODO: implementar foto
       );
       state = const AsyncData(null);
@@ -121,6 +126,7 @@ class AnimaisViewModel extends _$AnimaisViewModel {
                 pesoAtual: pesoAtual,
                 dataNascimento: emVisualizacao.dataNascimento,
                 fotoUrl: emVisualizacao.fotoUrl,
+                propriedadeId: emVisualizacao.propriedadeId,
               ),
             );
       }
@@ -175,6 +181,7 @@ class AnimaisViewModel extends _$AnimaisViewModel {
         pastoDestinoId: null,
         rebanhoOrigemId: null,
         rebanhoDestinoId: null,
+        // Pesagem não é movimentação — nomes não se aplicam
       );
 
       // Atualização otimista local
@@ -189,6 +196,7 @@ class AnimaisViewModel extends _$AnimaisViewModel {
               pesoAtual: novoPeso,
               dataNascimento: animal.dataNascimento,
               fotoUrl: animal.fotoUrl,
+              propriedadeId: animal.propriedadeId,
             ),
           );
 
@@ -198,6 +206,10 @@ class AnimaisViewModel extends _$AnimaisViewModel {
     }
   }
 
+  // =========================
+  // REGISTRAR MOVIMENTAÇÃO
+  // =========================
+
   Future<void> registrarHistoricoMovimento({
     required DateTime data,
     required HistoricoTipo tipo,
@@ -205,6 +217,10 @@ class AnimaisViewModel extends _$AnimaisViewModel {
     String? pastoDestinoId,
     String? rebanhoOrigemId,
     String? rebanhoDestinoId,
+    String? nomePastoOrigem,
+    String? nomePastoDestino,
+    String? nomeRebanhoOrigem,
+    String? nomeRebanhoDestino,
   }) async {
     final animal = ref.read(animalEmVisualizacaoProvider);
     if (animal == null) return;
@@ -221,6 +237,10 @@ class AnimaisViewModel extends _$AnimaisViewModel {
         pastoDestinoId: pastoDestinoId,
         rebanhoOrigemId: rebanhoOrigemId,
         rebanhoDestinoId: rebanhoDestinoId,
+        nomePastoOrigem: nomePastoOrigem,
+        nomePastoDestino: nomePastoDestino,
+        nomeRebanhoOrigem: nomeRebanhoOrigem,
+        nomeRebanhoDestino: nomeRebanhoDestino,
       );
 
       state = const AsyncData(null);

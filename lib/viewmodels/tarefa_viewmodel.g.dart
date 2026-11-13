@@ -82,7 +82,7 @@ final class TarefasViewModelProvider
   }
 }
 
-String _$tarefasViewModelHash() => r'1df2d1caa9beaa3d806638ff78e0cf9a64baa117';
+String _$tarefasViewModelHash() => r'ee6a7fb099a0ba5e11d205b555cd7961bd756844';
 
 abstract class _$TarefasViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

@@ -331,15 +331,10 @@ class BovBackButton extends StatelessWidget {
       child: Container(
         width: 36,
         height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
         child: const Icon(
           Icons.arrow_back_ios_new_rounded,
           color: AppColors.text2,
-          size: 16,
+          size: 24,
         ),
       ),
     );
@@ -372,6 +367,31 @@ void showBovErrorSnackBar(BuildContext context, String message) {
 }
 
 // =============================================================================
+// SUCCESS SNACKBAR HELPER
+// =============================================================================
+
+void showBovSuccessSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        style: const TextStyle(
+          color: AppColors.text,
+          fontFamily: 'DM Sans',
+        ),
+      ),
+      backgroundColor: AppColors.card,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.accent),
+      ),
+      margin: const EdgeInsets.all(16),
+    ),
+  );
+}
+
+// =============================================================================
 // CONFIRMAÇÃO DE COORDENADA
 // =============================================================================
 
@@ -381,11 +401,16 @@ class BovConfirmacaoCoordenadaDialog extends StatelessWidget {
     required this.lat,
     required this.lng,
     this.cidadeProxima,
+    this.avisoRedefinicao = false,
   });
 
   final double lat;
   final double lng;
   final String? cidadeProxima;
+
+  /// Exibe o aviso de que os pastos desenhados não são alterados
+  /// (usado ao redefinir um centro já existente).
+  final bool avisoRedefinicao;
 
   @override
   Widget build(BuildContext context) {
@@ -425,6 +450,30 @@ class BovConfirmacaoCoordenadaDialog extends StatelessWidget {
               label: 'Próximo de',
               value: cidadeProxima ?? 'Não identificado',
             ),
+            if (avisoRedefinicao) ...[
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.text4,
+                    size: 16,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Pastos desenhados no mapa ficarão no mesmo local, inalterados.',
+                      style: TextStyle(
+                        color: AppColors.text4,
+                        fontSize: 12,
+                        fontFamily: 'DM Sans',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
             Row(
               children: [
@@ -459,6 +508,7 @@ class _CoordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           '$label: ',
@@ -468,13 +518,16 @@ class _CoordRow extends StatelessWidget {
             fontFamily: 'DM Sans',
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.text,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'DM Sans',
+        // Expanded evita overflow quando o valor (ex.: cidade) é longo.
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'DM Sans',
+            ),
           ),
         ),
       ],
@@ -783,4 +836,142 @@ class _BovTimePickerColumnState extends State<_BovTimePickerColumn> {
       ),
     );
   }
+}
+
+
+// =============================================================================
+// DIALOG DE CONFIRMAÇÃO
+// =============================================================================
+
+/// Dialog de confirmação genérico.
+///
+/// Com [destrutivo] = true, o botão de confirmar usa o tom vermelho
+/// (ações como apagar). Por padrão mantém o tom verde de acento.
+Future<void> showBovConfirmDialog({
+  required BuildContext context,
+  required IconData icon,
+  required String titulo,
+  required String descricao,
+  required String textoConfirmar,
+  String textoCancelar = 'Cancelar',
+  required VoidCallback onConfirmar,
+  bool destrutivo = false,
+}) {
+  return showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) {
+      return Dialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(icon, color: AppColors.accent, size: 32),
+              ),
+
+              const SizedBox(height: 20),
+
+              Text(
+                titulo,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                descricao,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text4,
+                  fontSize: 14,
+                  height: 1.4,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.text4,
+                        side: BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        textoCancelar,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        onConfirmar();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: destrutivo
+                            ? AppColors.redBg
+                            : AppColors.accentBg,
+                        foregroundColor: destrutivo
+                            ? AppColors.red
+                            : Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: destrutivo
+                                ? AppColors.red
+                                : AppColors.accent,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        textoConfirmar,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }

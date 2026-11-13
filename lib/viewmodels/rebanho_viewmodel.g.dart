@@ -170,7 +170,7 @@ final class RebanhoViewModelProvider
   RebanhoViewModel create() => RebanhoViewModel();
 }
 
-String _$rebanhoViewModelHash() => r'eeb491ec535213e65ab4105bdf0075653b13fef7';
+String _$rebanhoViewModelHash() => r'aafe0520e50833c8d79a399fdd3daf2d95cb37a0';
 
 abstract class _$RebanhoViewModel extends $AsyncNotifier<void> {
   FutureOr<void> build();

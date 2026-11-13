@@ -82,7 +82,7 @@ final class PoligonoViewModelProvider
   }
 }
 
-String _$poligonoViewModelHash() => r'3f11ffc54d74aa5108b9fb5dc2f4099223ba5ea6';
+String _$poligonoViewModelHash() => r'79d15aa34e9cff253722d11e21fdf6201d109ffd';
 
 abstract class _$PoligonoViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();
