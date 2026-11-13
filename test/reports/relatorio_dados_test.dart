@@ -76,6 +76,7 @@ void main() {
           raca: 'Nelore',
           pesoAtual: 300,
           dataNascimento: DateTime(2024, 1, 1),
+          propriedadeId: propriedade.id,
         ),
         AnimalModel(
           id: 'animal-02',
@@ -84,6 +85,7 @@ void main() {
           raca: 'Angus',
           pesoAtual: 400,
           dataNascimento: DateTime(2024, 2, 1),
+          propriedadeId: propriedade.id,
         ),
       ],
       tarefas: [
