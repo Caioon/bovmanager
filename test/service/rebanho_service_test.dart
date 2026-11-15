@@ -69,6 +69,12 @@ class MockAnimalRepository extends AnimalRepository {
   bool pesou = false;
 
   @override
+  Future<void> alterarBrinco({
+    required String animalId,
+    required String brinco,
+  }) async {}
+
+  @override
   Stream<List<AnimalModel>> listarPorPropriedade({
     required String propriedadeId,
   }) {
@@ -214,6 +220,50 @@ void main() {
       expect(result.first.nome, 'Rebanho A');
     });
 
+    test('listarAnimaisDoRebanho() inclui somente os animais vinculados', () async {
+      animalRepository.animais.addAll([
+        AnimalModel(
+          id: 'animalDoLote',
+          nome: 'Boi 1',
+          brinco: '001',
+          raca: 'Nelore',
+          pesoAtual: 400,
+          dataNascimento: DateTime(2020),
+          propriedadeId: 'prop123',
+        ),
+        AnimalModel(
+          id: 'animalDeOutroLote',
+          nome: 'Boi 2',
+          brinco: '002',
+          raca: 'Nelore',
+          pesoAtual: 420,
+          dataNascimento: DateTime(2021),
+          propriedadeId: 'prop123',
+        ),
+      ]);
+      historicoService.buscarUltimaMovimentacaoMock =
+          ({required String animalId}) async {
+            return HistoricoAnimalModel(
+              id: 'movimento-$animalId',
+              animalId: animalId,
+              tipo: HistoricoTipo.mudarRebanho,
+              data: DateTime(2026),
+              rebanhoDestinoId: animalId == 'animalDoLote'
+                  ? 'rebanho123'
+                  : 'outroRebanho',
+              novoPeso: null,
+            );
+          };
+
+      final resultado = await service.listarAnimaisDoRebanho(
+        propriedadeId: 'prop123',
+        rebanhoId: 'rebanho123',
+      );
+
+      expect(resultado, hasLength(1));
+      expect(resultado.single.id, 'animalDoLote');
+    });
+
     test('criar() deve criar rebanho corretamente', () async {
       await service.criar(
         nome: 'Novo Rebanho',
@@ -247,10 +297,13 @@ void main() {
     });
 
     test('mover() deve atualizar rebanho em batch', () async {
+      // O servico valida se o rebanho pertence a propriedade antes de mover.
+      repository.rebanhos.add(rebanho);
+
       await service.mover(
         rebanhoId: 'rebanho123',
         propriedadeId: 'prop123',
-        antigoPastoId: 'pastoAntigo',
+        antigoPastoId: 'pasto123',
         novoPastoId: 'pastoNovo',
         data: DateTime(2026),
       );

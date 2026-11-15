@@ -100,7 +100,7 @@ void main() {
 
       expect(find.text('Ver Histórico'), findsOneWidget);
 
-      expect(find.text('Atualizar Histórico'), findsOneWidget);
+      expect(find.text('Realizar alteração'), findsOneWidget);
     });
   });
 }

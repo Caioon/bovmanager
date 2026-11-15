@@ -21,6 +21,17 @@ class MockAnimalRepository extends AnimalRepository {
   bool editou = false;
   bool apagou = false;
   bool registrouPesagem = false;
+  String? ultimoAnimalComBrincoAlterado;
+  String? ultimoBrincoAlterado;
+
+  @override
+  Future<void> alterarBrinco({
+    required String animalId,
+    required String brinco,
+  }) async {
+    ultimoAnimalComBrincoAlterado = animalId;
+    ultimoBrincoAlterado = brinco;
+  }
 
   @override
   Stream<List<AnimalModel>> listarPorPropriedade({
@@ -262,6 +273,67 @@ void main() {
       );
       expect(repo.editou, true);
     });
+    test('alterarBrinco() corrige o brinco sem trocar o ID', () async {
+      repo.animais.add(
+        AnimalModel(
+          id: 'animal123',
+          nome: 'Boi',
+          brinco: '001',
+          raca: 'Nelore',
+          pesoAtual: 400,
+          dataNascimento: DateTime(2020),
+          propriedadeId: 'prop123',
+        ),
+      );
+
+      await service.alterarBrinco(
+        animalId: 'animal123',
+        propriedadeId: 'prop123',
+        novoBrinco: ' 009 ',
+      );
+
+      expect(repo.ultimoAnimalComBrincoAlterado, 'animal123');
+      expect(repo.ultimoBrincoAlterado, '009');
+    });
+
+    test('alterarBrinco() rejeita brinco vazio', () async {
+      await expectLater(
+        service.alterarBrinco(
+          animalId: 'animal123',
+          propriedadeId: 'prop123',
+          novoBrinco: '  ',
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(repo.ultimoBrincoAlterado, isNull);
+    });
+
+    test('alterarBrinco() rejeita brinco duplicado na mesma propriedade', () async {
+      repo.animais.add(
+        AnimalModel(
+          id: 'outroAnimal',
+          nome: 'Outro',
+          brinco: '009',
+          raca: 'Gir',
+          pesoAtual: 320,
+          dataNascimento: DateTime(2021),
+          propriedadeId: 'prop123',
+        ),
+      );
+
+      await expectLater(
+        service.alterarBrinco(
+          animalId: 'animal123',
+          propriedadeId: 'prop123',
+          novoBrinco: '009',
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(repo.ultimoBrincoAlterado, isNull);
+    });
+
     test('apagar() deve apagar animal', () async {
       await service.apagar(animalId: 'animal123');
       expect(repo.apagou, true);

@@ -106,7 +106,7 @@ void main() {
       await tester.pumpWidget(buildScreen());
       await abrirModal(tester);
 
-      expect(find.text('Registrar alteração'), findsOneWidget);
+      expect(find.text('Realizar alteração'), findsOneWidget);
     });
 
     // 2. Widgets principais ──────────────────────────────────────────────────
@@ -116,7 +116,12 @@ void main() {
       await tester.pumpWidget(buildScreen(temRebanho: true));
       await abrirModal(tester);
 
-      expect(find.text('Registrar alteração'), findsOneWidget);
+      expect(find.text('Realizar alteração'), findsOneWidget);
+
+      // Seção de identificação (nova funcionalidade)
+      expect(find.text('IDENTIFICAÇÃO'), findsOneWidget);
+      expect(find.text('Alterar brinco'), findsOneWidget);
+      expect(find.text('Corrigir a identificação do animal'), findsOneWidget);
 
       // Seção de pesagem
       expect(find.text('PESAGEM'), findsOneWidget);
@@ -146,7 +151,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Modal fechou
-        expect(find.text('Registrar alteração'), findsNothing);
+        expect(find.text('Realizar alteração'), findsNothing);
 
         // Tela de pesagem aberta (título + botão têm o mesmo texto)
         expect(find.text('Registrar Pesagem'), findsWidgets);

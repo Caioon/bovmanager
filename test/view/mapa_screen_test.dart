@@ -84,6 +84,13 @@ class FakeAnimalService implements AnimalService {
   Stream<List<AnimalModel>> listar(String propriedadeId) => Stream.value([]);
 
   @override
+Future<void> alterarBrinco({
+  required String animalId,
+  required String propriedadeId,
+  required String novoBrinco,
+}) async {}
+
+  @override
   Future<int> contarAnimaisPorPasto({
     required String propriedadeId,
     required String pastoId,

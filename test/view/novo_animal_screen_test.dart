@@ -13,6 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bov_manager/models/animal_model.dart';
 
 // ---------------------------------------------------------------------------
 // Fake — AnimaisViewModel
@@ -122,6 +123,14 @@ class FakeRebanhoService implements RebanhoService {
 
   @override
   Future<List<RebanhoModel>> listar(String propriedadeId) async => [];
+
+  @override
+  Future<List<AnimalModel>> listarAnimaisDoRebanho({
+    required String propriedadeId,
+    required String rebanhoId,
+    }) async {
+    return [];
+  }
 
   @override
   Future<void> criar({

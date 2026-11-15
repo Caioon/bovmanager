@@ -94,6 +94,41 @@ void main() {
       expect(doc.data()?['fotoUrl'], 'nova.png');
     });
 
+    test('alterarBrinco() altera apenas a identificação e preserva histórico', () async {
+      await firestore.collection('animais').doc('animal123').set({
+        'nome': 'Boi',
+        'brinco': '001',
+        'raca': 'Nelore',
+        'pesoAtual': 420,
+        'propriedadeId': 'prop123',
+      });
+      await firestore
+          .collection('animais')
+          .doc('animal123')
+          .collection('historico')
+          .doc('movimento1')
+          .set({'tipo': 'mudar_rebanho'});
+
+      await repository.alterarBrinco(
+        animalId: 'animal123',
+        brinco: '009',
+      );
+
+      final doc = await firestore.collection('animais').doc('animal123').get();
+      final historico = await firestore
+          .collection('animais')
+          .doc('animal123')
+          .collection('historico')
+          .doc('movimento1')
+          .get();
+
+      expect(doc.data()?['brinco'], '009');
+      expect(doc.data()?['nome'], 'Boi');
+      expect(doc.data()?['pesoAtual'], 420);
+      expect(doc.data()?['propriedadeId'], 'prop123');
+      expect(historico.exists, isTrue);
+    });
+
     test('apagarAnimal() deve remover animal usando batch', () async {
       await firestore.collection('animais').doc('animal123').set({
         'nome': 'Boi',
