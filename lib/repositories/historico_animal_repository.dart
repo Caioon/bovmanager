@@ -66,6 +66,7 @@ class HistoricoAnimalRepositoryImpl implements HistoricoAnimalRepository {
     'mudar_rebanho',
     'sair_rebanho_mudar_pasto',
     'sair_rebanho_manter_pasto',
+    'mudar_pasto_continuar_sem_rebanho',
     'mudar_pasto_com_rebanho',
   ];
 

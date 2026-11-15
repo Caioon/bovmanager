@@ -2,7 +2,7 @@ import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/animal_model.dart';
-import 'package:bov_manager/models/historico_tipo.dart';
+import 'package:bov_manager/utils/localizacao_animal.dart';
 import 'package:bov_manager/repositories/rebanho_repository.dart';
 import 'package:bov_manager/services/pasto_service.dart';
 import 'package:bov_manager/view/atualizar_historico_screen.dart';
@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-// Regras de habilitação das opções do modal "Atualizar Histórico":
+// Regras de habilitação das opções do modal "Realizar alteração":
 // - Entrar/mudar de rebanho: precisa existir pelo menos 1 rebanho cadastrado
 //   na propriedade diferente do rebanho atual do animal (cobre os dois
 //   casos: "entrar" quando não há rebanho atual, e "mudar" quando há).
@@ -45,6 +45,9 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
   bool _carregandoFlagsMovimentacao = false;
   bool _podeMovimentarRebanho = false;
   bool _podeMudarPasto = false;
+  Map<String, String> _nomesRebanhos = const {};
+  Map<String, String> _nomesPastos = const {};
+  Map<String, String> _pastoPorRebanho = const {};
 
   @override
   void initState() {
@@ -76,10 +79,15 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
       if (!mounted) return;
 
       setState(() {
+        _nomesRebanhos = {for (final r in rebanhos) r.id: r.nome};
+        _nomesPastos = {for (final p in pastos) p.id: p.nome};
+        _pastoPorRebanho = {for (final r in rebanhos) r.id: r.pastoId};
+        // O pasto do rebanho pode ter sido alterado após o último histórico.
+        final pastoEfetivoId = _pastoPorRebanho[rebanhoAtualId] ?? pastoAtualId;
         _podeMovimentarRebanho = rebanhos.any(
           (rebanho) => rebanho.id != rebanhoAtualId,
         );
-        _podeMudarPasto = pastos.any((pasto) => pasto.id != pastoAtualId);
+        _podeMudarPasto = pastos.any((pasto) => pasto.id != pastoEfetivoId);
         _carregandoFlagsMovimentacao = false;
       });
     } catch (_) {
@@ -121,27 +129,35 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
 
     final historicos = ref.watch(historicoAnimalListaProvider).value;
 
-    String? nomeRebanhoAtual;
-    String? nomePastoAtual;
-    String? rebanhoAtualId;
-    String? pastoAtualId;
+    final localizacao = historicos == null
+        ? null
+        : LocalizacaoAnimal.deHistoricos(historicos);
+    final rebanhoAtualId = localizacao?.rebanhoId;
+    final pastoHistoricoId = localizacao?.pastoId;
+    final pastoAtualId = _pastoPorRebanho[rebanhoAtualId] ?? pastoHistoricoId;
+    final temRebanho = rebanhoAtualId != null;
 
-    if (historicos != null) {
-      for (final registro in historicos) {
-        if (registro.tipo != HistoricoTipo.pesagem) {
-          nomeRebanhoAtual = registro.nomeRebanhoDestino;
-          nomePastoAtual = registro.nomePastoDestino;
-          rebanhoAtualId = registro.rebanhoDestinoId;
-          pastoAtualId = registro.pastoDestinoId;
-          break;
-        }
-      }
-    }
+    // A identidade do vínculo vem dos IDs; os nomes do histórico podem estar
+    // nulos ou desatualizados após a movimentação de um rebanho inteiro.
+    final nomeRebanhoAtual = rebanhoAtualId == null
+        ? null
+        : (_nomesRebanhos[rebanhoAtualId] ??
+            localizacao?.nomeRebanho ??
+            (_carregandoFlagsMovimentacao
+                ? 'Carregando...'
+                : 'Rebanho não encontrado'));
+    final nomePastoAtual = pastoAtualId == null
+        ? null
+        : (_nomesPastos[pastoAtualId] ??
+            (pastoAtualId == pastoHistoricoId ? localizacao?.nomePasto : null) ??
+            (_carregandoFlagsMovimentacao
+                ? 'Carregando...'
+                : 'Pasto não encontrado'));
 
-    bool temRebanho = nomeRebanhoAtual != null;
-
-    final flagsKey = '${animal.propriedadeId}|$rebanhoAtualId|$pastoAtualId';
-    if (_flagsMovimentacaoKey != flagsKey && !_carregandoFlagsMovimentacao) {
+    final flagsKey = '${animal.propriedadeId}|$rebanhoAtualId|$pastoHistoricoId';
+    if (historicos != null &&
+        _flagsMovimentacaoKey != flagsKey &&
+        !_carregandoFlagsMovimentacao) {
       _flagsMovimentacaoKey = flagsKey;
       _carregandoFlagsMovimentacao = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -303,7 +319,7 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
                           ),
                           _InfoRow(
                             icon: Icons.grass_rounded,
-                            label: nomeRebanhoAtual != null
+                            label: temRebanho
                                 ? 'Pasto atual (mesmo do rebanho)'
                                 : 'Pasto atual',
                             value: nomePastoAtual ?? 'Sem pasto',
@@ -331,7 +347,7 @@ class _DetalhesAnimalScreenState extends ConsumerState<DetalhesAnimalScreen> {
                     const SizedBox(height: 10),
 
                     BovSecondaryButton(
-                      label: 'Atualizar Histórico',
+                      label: 'Realizar alteração',
                       icon: Icons.edit_note_rounded,
                       onPressed: () => showAtualizarHistoricoModal(
                         context,

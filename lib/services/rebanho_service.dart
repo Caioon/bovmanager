@@ -1,4 +1,5 @@
 import 'package:bov_manager/models/rebanho_model.dart';
+import 'package:bov_manager/models/animal_model.dart';
 import 'package:bov_manager/models/historico_tipo.dart';
 import 'package:bov_manager/repositories/animal_repository.dart';
 import 'package:bov_manager/repositories/rebanho_repository.dart';
@@ -44,6 +45,25 @@ class RebanhoService {
   }
 
   // ---------------------------------------------------------------------------
+  // Animais atualmente vinculados a um rebanho (somente leitura)
+  // ---------------------------------------------------------------------------
+  Future<List<AnimalModel>> listarAnimaisDoRebanho({
+    required String propriedadeId,
+    required String rebanhoId,
+  }) async {
+    final animais = await animalRepository
+        .listarPorPropriedade(propriedadeId: propriedadeId)
+        .first;
+    final vinculos = await Future.wait(animais.map((animal) async {
+      final ultima = await historicoService.buscarUltimaMovimentacao(
+        animalId: animal.id,
+      );
+      return ultima?.rebanhoDestinoId == rebanhoId ? animal : null;
+    }));
+    return vinculos.whereType<AnimalModel>().toList();
+  }
+
+  // ---------------------------------------------------------------------------
   // Criar
   // ---------------------------------------------------------------------------
   Future<void> criar({
@@ -85,22 +105,15 @@ class RebanhoService {
       throw Exception('Selecione o pasto de destino.');
     }
 
-    final animais = await animalRepository
-        .listarPorPropriedade(propriedadeId: propriedadeId)
-        .first;
-
-    final futures = animais.map((animal) async {
-      final ultima = await historicoService.buscarUltimaMovimentacao(
-        animalId: animal.id,
-      );
-      if (ultima?.rebanhoDestinoId == rebanhoId) return animal;
-      return null;
-    });
-
-    final resultados = await Future.wait(futures);
-    final animaisDoRebanho = resultados.whereType<dynamic>()
-        .where((a) => a != null)
-        .toList();
+    final animaisDoRebanho = await listarAnimaisDoRebanho(
+      propriedadeId: propriedadeId,
+      rebanhoId: rebanhoId,
+    );
+    final rebanhos = await repository.listar(propriedadeId);
+    final rebanhoAtual = rebanhos.where((r) => r.id == rebanhoId).firstOrNull;
+    if (rebanhoAtual == null) {
+      throw Exception('Rebanho não encontrado na propriedade.');
+    }
 
     final batch = firestore.batch();
 
@@ -123,9 +136,10 @@ class RebanhoService {
         nomePastoOrigem: nomePastoOrigem,
         nomePastoDestino: nomePastoDestino,
         data: data,
-        // Rebanho não muda — nomes de rebanho são null neste fluxo
-        nomeRebanhoOrigem: null,
-        nomeRebanhoDestino: null,
+        // O lote permanece o mesmo; persistir seu nome evita rótulos vazios
+        // em históricos antigos que ainda dependem desse campo.
+        nomeRebanhoOrigem: rebanhoAtual.nome,
+        nomeRebanhoDestino: rebanhoAtual.nome,
         batch: batch,
       );
     }
@@ -141,20 +155,13 @@ class RebanhoService {
     required String rebanhoId,
     required String propriedadeId,
   }) async {
-    final animais = await animalRepository
-        .listarPorPropriedade(propriedadeId: propriedadeId)
-        .first;
+    final animaisDoRebanho = await listarAnimaisDoRebanho(
+      propriedadeId: propriedadeId,
+      rebanhoId: rebanhoId,
+    );
 
-    int count = 0;
-    for (final animal in animais) {
-      final ultima = await historicoService.buscarUltimaMovimentacao(
-        animalId: animal.id,
-      );
-      if (ultima?.rebanhoDestinoId == rebanhoId) count++;
-    }
-
-    if (count > 0) {
-      return 'Este rebanho possui $count animal(is). Mova-os antes de apagar.';
+    if (animaisDoRebanho.isNotEmpty) {
+      return 'Este rebanho possui ${animaisDoRebanho.length} animal(is). Mova-os antes de apagar.';
     }
 
     return null;

@@ -139,6 +139,32 @@ class AnimalService {
     );
   }
 
+  Future<void> alterarBrinco({
+    required String animalId,
+    required String propriedadeId,
+    required String novoBrinco,
+  }) async {
+    final brinco = novoBrinco.trim();
+    if (brinco.isEmpty) {
+      throw Exception('Informe o novo brinco do animal.');
+    }
+    if (propriedadeId.isEmpty) {
+      throw Exception('Propriedade do animal inválida.');
+    }
+
+    // A identificação deve ser única dentro da mesma propriedade.
+    final animais = await _repo
+        .listarPorPropriedade(propriedadeId: propriedadeId)
+        .first;
+    if (animais.any(
+      (animal) => animal.id != animalId && animal.brinco == brinco,
+    )) {
+      throw Exception('Já existe outro animal com este brinco na propriedade.');
+    }
+
+    await _repo.alterarBrinco(animalId: animalId, brinco: brinco);
+  }
+
   Future<void> apagar({required String animalId}) async {
     final batch = _firestore.batch();
 
