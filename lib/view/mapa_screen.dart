@@ -245,10 +245,21 @@ class _MapaScreenState extends ConsumerState<MapaScreen> {
   }
 
   Future<void> _abrirNovoPasto() async {
+    // Identifica a propriedade exibida no mapa, seja ele aberto pelo
+    // Dashboard ou pela tela de detalhes da propriedade.
+    final propriedadeId = _propriedadeId;
+    if (propriedadeId == null || propriedadeId.trim().isEmpty) {
+      showBovErrorSnackBar(
+        context,
+        'Selecione uma propriedade antes de cadastrar um pasto.',
+      );
+      return;
+    }
+
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => NovoPastoScreen(
-          propriedadeId: widget.emVisualizacao ? _propriedadeId : null,
-        )),
+      MaterialPageRoute(
+        builder: (_) => NovoPastoScreen(propriedadeId: propriedadeId),
+      ),
     );
     if (!mounted) return;
 

@@ -138,6 +138,44 @@ class AnimaisViewModel extends _$AnimaisViewModel {
   }
 
   // =========================
+  // ALTERAR BRINCO SEM MODIFICAR HISTÓRICO OU LOCALIZAÇÃO
+  // =========================
+
+  Future<void> alterarBrinco({
+    required String animalId,
+    required String propriedadeId,
+    required String novoBrinco,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      await _service.alterarBrinco(
+        animalId: animalId,
+        propriedadeId: propriedadeId,
+        novoBrinco: novoBrinco,
+      );
+
+      final animal = ref.read(animalEmVisualizacaoProvider);
+      if (animal?.id == animalId) {
+        ref.read(animalEmVisualizacaoProvider.notifier).abrir(
+          AnimalModel(
+            id: animal!.id,
+            nome: animal.nome,
+            brinco: novoBrinco.trim(),
+            raca: animal.raca,
+            pesoAtual: animal.pesoAtual,
+            dataNascimento: animal.dataNascimento,
+            propriedadeId: animal.propriedadeId,
+            fotoUrl: animal.fotoUrl,
+          ),
+        );
+      }
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
+
+  // =========================
   // APAGAR
   // =========================
 

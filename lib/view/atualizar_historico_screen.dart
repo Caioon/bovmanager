@@ -27,6 +27,7 @@
 //nome: Mudar pasto com rebanho
 
 import 'package:bov_manager/core/theme/app_colors.dart';
+import 'package:bov_manager/view/alterar_brinco_animal_screen.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/historico_tipo.dart';
 import 'package:bov_manager/models/pasto_model.dart';
@@ -96,7 +97,7 @@ void showAtualizarHistoricoModal(
                     child: const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Registrar alteração',
+                        'Realizar alteração',
                         style: TextStyle(
                           color: AppColors.text,
                           fontSize: 18,
@@ -105,6 +106,40 @@ void showAtualizarHistoricoModal(
                         ),
                       ),
                     ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'IDENTIFICAÇÃO',
+                        style: TextStyle(
+                          color: AppColors.text4,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: .8,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _ModalOpcao(
+                    icon: Icons.tag_rounded,
+                    titulo: 'Alterar brinco',
+                    subtitulo: 'Corrigir a identificação do animal',
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      if (!context.mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AlterarBrincoAnimalScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24),

@@ -43,6 +43,12 @@ abstract class AnimalRepository {
     String? fotoUrl,
   });
 
+  /// Altera apenas o brinco, preservando ID, outros campos e histórico.
+  Future<void> alterarBrinco({
+    required String animalId,
+    required String brinco,
+  });
+
   Future<void> apagarAnimal({
     required String animalId,
     required WriteBatch batch,
@@ -133,6 +139,14 @@ class AnimalRepositoryImpl implements AnimalRepository {
       'raca': raca,
       'fotoUrl': fotoUrl,
     });
+  }
+
+  @override
+  Future<void> alterarBrinco({
+    required String animalId,
+    required String brinco,
+  }) async {
+    await _col.doc(animalId).update({'brinco': brinco});
   }
 
   @override

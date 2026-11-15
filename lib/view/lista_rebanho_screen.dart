@@ -3,6 +3,7 @@ import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
 import 'package:bov_manager/models/rebanho_model.dart';
+import 'package:bov_manager/view/detalhes_rebanho_screen.dart';
 import 'package:bov_manager/services/rebanho_service.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
 import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
@@ -248,6 +249,28 @@ class _ListaRebanhoScreenState extends ConsumerState<ListaRebanhoScreen> {
               ),
 
               const SizedBox(height: 20),
+
+              BovSecondaryButton(
+                label: 'Visualizar animais',
+                icon: Icons.pets_rounded,
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  final nomePasto = _nomeDoPasto(
+                    ref.read(pastosListaPropEmVisualizacaoProvider),
+                    rebanho.pastoId,
+                  );
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => DetalhesRebanhoScreen(
+                        rebanho: rebanho,
+                        nomePasto: nomePasto,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 8),
 
               BovSecondaryButton(
                 label: 'Mover Rebanho',
