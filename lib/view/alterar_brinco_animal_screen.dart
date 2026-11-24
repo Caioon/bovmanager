@@ -18,6 +18,7 @@ class _AlterarBrincoAnimalScreenState
   final _brincoController = TextEditingController();
   bool _salvando = false;
   bool _inicializado = false;
+  bool _erroBrinco = false;
 
   @override
   void dispose() {
@@ -30,6 +31,7 @@ class _AlterarBrincoAnimalScreenState
     if (animal == null) return;
     final novoBrinco = _brincoController.text.trim();
     if (novoBrinco.isEmpty) {
+      setState(() => _erroBrinco = true);
       showBovErrorSnackBar(context, 'Informe o número do brinco.');
       return;
     }
@@ -106,6 +108,10 @@ class _AlterarBrincoAnimalScreenState
                       controller: _brincoController,
                       hintText: 'Identificação do animal',
                       textInputAction: TextInputAction.done,
+                      errorBorder: _erroBrinco,
+                      onChanged: (_) {
+                        if (_erroBrinco) setState(() => _erroBrinco = false);
+                      },
                     ),
                     const SizedBox(height: 16),
                     const Text(

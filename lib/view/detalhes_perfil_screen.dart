@@ -96,7 +96,7 @@ class DetalhesPerfilScreen extends ConsumerWidget {
                         _campo(
                           context,
                           titulo: 'CPF',
-                          valor: usuario.cpf,
+                          valor: _formatarCpf(usuario.cpf),
                           onPressed: () => AppCoordinator.goToAlterarCpf(
                             context,
                             cpfAtual: usuario.cpf,
@@ -147,6 +147,14 @@ class DetalhesPerfilScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Formata o CPF como 000.000.000-00.
+  /// Aceita valor com ou sem pontuação; se não tiver 11 dígitos, retorna como veio.
+  String _formatarCpf(String cpf) {
+    final d = cpf.replaceAll(RegExp(r'\D'), '');
+    if (d.length != 11) return cpf;
+    return '${d.substring(0, 3)}.${d.substring(3, 6)}.${d.substring(6, 9)}-${d.substring(9)}';
   }
 
   Widget _campo(

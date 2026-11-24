@@ -164,6 +164,25 @@ class PropriedadesViewModel extends _$PropriedadesViewModel {
             );
       }
 
+      // Atualiza também a propriedade em visualização (tela de detalhes),
+      // preservando o centro do mapa, que o PropriedadeModel também guarda.
+      final emVisualizacao = ref.read(propriedadeEmVisualizacaoProvider);
+
+      if (emVisualizacao?.id == propriedadeId) {
+        ref
+            .read(propriedadeEmVisualizacaoProvider.notifier)
+            .abrir(
+              PropriedadeModel(
+                id: emVisualizacao!.id,
+                nome: nome,
+                proprietarioId: emVisualizacao.proprietarioId,
+                dataCadastro: emVisualizacao.dataCadastro,
+                centroLat: emVisualizacao.centroLat,
+                centroLng: emVisualizacao.centroLng,
+              ),
+            );
+      }
+
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);

@@ -283,7 +283,7 @@ class _DetalhesPropriedadeScreenState
                 ),
               ),
               BovSecondaryButton(
-                label: 'Editar Propriedade',
+                label: 'Editar nome',
                 icon: Icons.edit_outlined,
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -603,6 +603,7 @@ class _EditarPropriedadeModal extends StatefulWidget {
 class _EditarPropriedadeModalState extends State<_EditarPropriedadeModal> {
   late final TextEditingController _nomeCtrl;
   bool _isLoading = false;
+  bool _erroNome = false;
 
   @override
   void initState() {
@@ -641,7 +642,7 @@ class _EditarPropriedadeModalState extends State<_EditarPropriedadeModal> {
             ),
           ),
           const Text(
-            'Editar Propriedade',
+            'Editar nome',
             style: TextStyle(
               color: AppColors.text,
               fontSize: 17,
@@ -655,12 +656,22 @@ class _EditarPropriedadeModalState extends State<_EditarPropriedadeModal> {
           BovTextField(
             controller: _nomeCtrl,
             textInputAction: TextInputAction.done,
+            errorBorder: _erroNome,
+            onChanged: (valor) {
+              if (_erroNome && valor.trim().isNotEmpty) {
+                setState(() => _erroNome = false);
+              }
+            },
           ),
           const SizedBox(height: 20),
           BovPrimaryButton(
             label: 'Salvar Alterações',
             isLoading: _isLoading,
             onPressed: () async {
+              if (_nomeCtrl.text.trim().isEmpty) {
+                setState(() => _erroNome = true);
+                return;
+              }
               setState(() => _isLoading = true);
               final navigator = Navigator.of(context);
               await widget.onSalvar(_nomeCtrl.text);

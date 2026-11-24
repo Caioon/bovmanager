@@ -21,6 +21,8 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
   PastoModel? _pastoSelecionado;
   List<PastoModel> _pastos = [];
   bool _carregandoPastos = true;
+  bool _erroNome = false;
+  bool _erroPasto = false;
 
   @override
   void initState() {
@@ -123,6 +125,12 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                       controller: _nomeController,
                       hintText: 'Ex: Lote A — Nelore',
                       textInputAction: TextInputAction.done,
+                      errorBorder: _erroNome,
+                      onChanged: (valor) {
+                        if (_erroNome && valor.trim().isNotEmpty) {
+                          setState(() => _erroNome = false);
+                        }
+                      },
                     ),
 
                     const SizedBox(height: 14),
@@ -136,6 +144,7 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                         ? _InfoBox(
                             mensagem: 'Nenhum pasto cadastrado.',
                             botaoLabel: 'Criar pasto',
+                            erro: _erroPasto,
                             onBotao: () async {
                               await AppCoordinator.goToNovoPasto(
                                 context,
@@ -150,8 +159,11 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                             items: _pastos,
                             itemLabel: (p) => p.nome,
                             hint: 'Selecione um pasto',
-                            onChanged: (p) =>
-                                setState(() => _pastoSelecionado = p),
+                            erro: _erroPasto,
+                            onChanged: (p) => setState(() {
+                              _pastoSelecionado = p;
+                              if (p != null) _erroPasto = false;
+                            }),
                           ),
                     const SizedBox(height: 28),
 
@@ -159,6 +171,11 @@ class _NovoRebanhoScreenState extends ConsumerState<NovoRebanhoScreen> {
                       label: 'Criar Rebanho',
                       isLoading: isLoading,
                       onPressed: () {
+                        setState(() {
+                          _erroNome = _nomeController.text.trim().isEmpty;
+                          _erroPasto = _pastoSelecionado == null;
+                        });
+
                         if (_nomeController.text.trim().isEmpty) {
                           showBovErrorSnackBar(
                             context,
@@ -214,6 +231,7 @@ class _BovDropdown<T> extends StatelessWidget {
     required this.hint,
     required this.onChanged,
     this.enabled = true,
+    this.erro = false,
   });
 
   final T? value;
@@ -222,6 +240,7 @@ class _BovDropdown<T> extends StatelessWidget {
   final String hint;
   final ValueChanged<T?> onChanged;
   final bool enabled;
+  final bool erro;
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +250,7 @@ class _BovDropdown<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: enabled ? AppColors.card : AppColors.background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: erro ? AppColors.red : AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
@@ -351,11 +370,13 @@ class _InfoBox extends StatelessWidget {
     required this.mensagem,
     required this.botaoLabel,
     required this.onBotao,
+    this.erro = false,
   });
 
   final String mensagem;
   final String? botaoLabel;
   final VoidCallback? onBotao;
+  final bool erro;
 
   @override
   Widget build(BuildContext context) {
@@ -365,7 +386,7 @@ class _InfoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: erro ? AppColors.red : AppColors.border),
       ),
       child: Row(
         children: [

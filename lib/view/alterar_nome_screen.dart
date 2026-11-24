@@ -16,6 +16,7 @@ class AlterarNomeScreen extends ConsumerStatefulWidget {
 class _AlterarNomeScreenState extends ConsumerState<AlterarNomeScreen> {
   late final TextEditingController _controller;
   bool _isLoading = false;
+  bool _nomeInvalido = false;
 
   @override
   void initState() {
@@ -36,7 +37,10 @@ class _AlterarNomeScreenState extends ConsumerState<AlterarNomeScreen> {
 
   Future<void> _salvar() async {
     final novoNome = _controller.text.trim();
-    if (novoNome.isEmpty) return;
+    if (novoNome.isEmpty) {
+      setState(() => _nomeInvalido = true);
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -117,6 +121,9 @@ class _AlterarNomeScreenState extends ConsumerState<AlterarNomeScreen> {
                     TextField(
                       controller: _controller,
                       autofocus: true,
+                      onChanged: (_) {
+                        if (_nomeInvalido) setState(() => _nomeInvalido = false);
+                      },
                       style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 16,
@@ -124,7 +131,22 @@ class _AlterarNomeScreenState extends ConsumerState<AlterarNomeScreen> {
                       ),
                       decoration: InputDecoration(
                         labelText: 'Nome',
-                        labelStyle: const TextStyle(color: AppColors.text4),
+                        labelStyle: TextStyle(
+                          color: _nomeInvalido
+                              ? AppColors.red
+                              : AppColors.text4,
+                        ),
+                        errorText:
+                            _nomeInvalido ? 'O nome não pode estar vazio' : null,
+                        errorStyle: const TextStyle(color: AppColors.red),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.red),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.red),
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: AppColors.border),

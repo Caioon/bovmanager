@@ -23,7 +23,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
   final _pesoController = TextEditingController();
 
   String _racaSelecionada = '';
-  DateTime _dataNascimento = DateTime.now();
+  DateTime? _dataNascimento;
 
   // ── Rebanho ───────────────────────────────────────────────────────────────
   List<RebanhoModel> _rebanhos = [];
@@ -35,6 +35,13 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
   bool _carregandoPastos = false;
   PastoModel? _pastoDestino;
   bool _usarRebanho = false;
+
+  // ── Estado de validação (borda vermelha) ──────────────────────────────────
+  bool _erroBrinco = false;
+  bool _erroRaca = false;
+  bool _erroPeso = false;
+  bool _erroData = false;
+  bool _erroDestino = false;
 
   static const _racas = [
     'Nelore',
@@ -83,7 +90,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
   Future<void> _selecionarData() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dataNascimento,
+      initialDate: _dataNascimento ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(3000),
       builder: (context, child) => Theme(
@@ -96,7 +103,12 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _dataNascimento = picked);
+    if (picked != null) {
+      setState(() {
+        _dataNascimento = picked;
+        _erroData = false;
+      });
+    }
   }
 
   @override
@@ -163,6 +175,10 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                       controller: _brincoController,
                       hintText: 'Ex: #0042',
                       textInputAction: TextInputAction.next,
+                      errorBorder: _erroBrinco,
+                      onChanged: (_) {
+                        if (_erroBrinco) setState(() => _erroBrinco = false);
+                      },
                     ),
 
                     const SizedBox(height: 14),
@@ -178,8 +194,11 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                             (r) => DropdownMenuItem(value: r, child: Text(r)),
                           )
                           .toList(),
-                      onChanged: (v) =>
-                          setState(() => _racaSelecionada = v ?? ''),
+                      hasError: _erroRaca,
+                      onChanged: (v) => setState(() {
+                        _racaSelecionada = v ?? '';
+                        _erroRaca = false;
+                      }),
                     ),
 
                     const SizedBox(height: 14),
@@ -201,6 +220,12 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                       decimal: true,
                                     ),
                                 textInputAction: TextInputAction.next,
+                                errorBorder: _erroPeso,
+                                onChanged: (_) {
+                                  if (_erroPeso) {
+                                    setState(() => _erroPeso = false);
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -222,7 +247,11 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                   decoration: BoxDecoration(
                                     color: AppColors.card,
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.border),
+                                    border: Border.all(
+                                      color: _erroData
+                                          ? AppColors.red
+                                          : AppColors.border,
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -233,9 +262,13 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${_dataNascimento.day.toString().padLeft(2, '0')}/${_dataNascimento.month.toString().padLeft(2, '0')}/${_dataNascimento.year}',
-                                        style: const TextStyle(
-                                          color: AppColors.text,
+                                        _dataNascimento == null
+                                            ? 'Selecionar data'
+                                            : '${_dataNascimento!.day.toString().padLeft(2, '0')}/${_dataNascimento!.month.toString().padLeft(2, '0')}/${_dataNascimento!.year}',
+                                        style: TextStyle(
+                                          color: _dataNascimento == null
+                                              ? AppColors.text4
+                                              : AppColors.text,
                                           fontSize: 14,
                                           fontFamily: 'DM Sans',
                                         ),
@@ -283,6 +316,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                 if (_usarRebanho == false) return;
                                 setState(() {
                                   _usarRebanho = false;
+                                  _erroDestino = false;
                                 });
                                 // Se os pastos ainda não foram carregados, busca agora.
                                 if (_pastos.isEmpty && !_carregandoPastos) {
@@ -340,6 +374,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                                 if (_usarRebanho == true) return;
                                 setState(() {
                                   _usarRebanho = true;
+                                  _erroDestino = false;
                                 });
                                 // Se os rebanhos ainda não foram carregados, busca agora.
                                 if (_rebanhos.isEmpty && !_carregandoRebanhos) {
@@ -406,6 +441,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                         _InfoBox(
                           mensagem:
                               'Nenhum rebanho cadastrado nesta propriedade.',
+                          hasError: _erroDestino,
                           botaoLabel: 'Criar rebanho',
                           onBotao: () async {
                             final propId = ref
@@ -435,6 +471,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                         _BovDropdown<RebanhoModel>(
                           value: _rebanhoSelecionado,
                           hint: 'Selecionar rebanho',
+                          hasError: _erroDestino,
 
                           items: _rebanhos
                               .map(
@@ -451,6 +488,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                           onChanged: (r) {
                             setState(() {
                               _rebanhoSelecionado = r;
+                              _erroDestino = false;
                             });
                           },
                         ),
@@ -461,6 +499,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                         _InfoBox(
                           mensagem:
                               'Nenhum pasto cadastrado nesta propriedade.',
+                          hasError: _erroDestino,
                           botaoLabel: 'Criar pasto',
                           onBotao: () async {
                             final propId = ref
@@ -490,6 +529,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                         _BovDropdown<PastoModel>(
                           value: _pastoDestino,
                           hint: 'Selecionar pasto',
+                          hasError: _erroDestino,
 
                           items: _pastos
                               .map(
@@ -506,6 +546,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                           onChanged: (p) {
                             setState(() {
                               _pastoDestino = p;
+                              _erroDestino = false;
                             });
                           },
                         ),
@@ -516,6 +557,35 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                       label: 'Cadastrar Animal',
                       isLoading: isLoading,
                       onPressed: () {
+                        // ── Validação: marca os campos inválidos em vermelho ──
+                        final pesoValor = double.tryParse(_pesoController.text);
+                        final hoje = DateTime.now();
+                        final erroBrinco = _brincoController.text.trim().isEmpty;
+                        final erroRaca = _racaSelecionada.isEmpty;
+                        final erroPeso = pesoValor == null || pesoValor <= 0;
+                        final erroData =
+                            _dataNascimento == null ||
+                            _dataNascimento!.isAfter(hoje);
+                        final erroDestino = _usarRebanho
+                            ? _rebanhoSelecionado == null
+                            : _pastoDestino == null;
+
+                        setState(() {
+                          _erroBrinco = erroBrinco;
+                          _erroRaca = erroRaca;
+                          _erroPeso = erroPeso;
+                          _erroData = erroData;
+                          _erroDestino = erroDestino;
+                        });
+
+                        if (erroBrinco ||
+                            erroRaca ||
+                            erroPeso ||
+                            erroData ||
+                            erroDestino) {
+                          return;
+                        }
+
                         if (_usarRebanho && _rebanhoSelecionado == null) {
                           showBovErrorSnackBar(
                             context,
@@ -551,7 +621,7 @@ class _NovoAnimalScreenState extends ConsumerState<NovoAnimalScreen> {
                               raca: _racaSelecionada,
                               pesoAtual:
                                   double.tryParse(_pesoController.text) ?? 0.0,
-                              dataNascimento: _dataNascimento,
+                              dataNascimento: _dataNascimento!,
                               rebanhoDestinoId: _usarRebanho
                                   ? _rebanhoSelecionado!.id
                                   : null,
@@ -590,8 +660,10 @@ class _InfoBox extends StatelessWidget {
     required this.mensagem,
     required this.botaoLabel,
     required this.onBotao,
+    this.hasError = false,
   });
 
+  final bool hasError;
   final String mensagem;
   final String? botaoLabel;
   final VoidCallback? onBotao;
@@ -604,7 +676,9 @@ class _InfoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: hasError ? AppColors.red : AppColors.border,
+        ),
       ),
       child: Row(
         children: [
@@ -661,8 +735,10 @@ class _BovDropdown<T> extends StatelessWidget {
     required this.hint,
     required this.items,
     required this.onChanged,
+    this.hasError = false,
   });
 
+  final bool hasError;
   final T? value;
   final String hint;
   final List<DropdownMenuItem<T>> items;
@@ -674,7 +750,9 @@ class _BovDropdown<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: hasError ? AppColors.red : AppColors.border,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: DropdownButtonHideUnderline(

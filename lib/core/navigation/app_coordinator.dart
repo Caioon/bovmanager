@@ -126,8 +126,8 @@ abstract class AppCoordinator {
     Navigator.push(context, _slideRoute(const HistoricoAnimalScreen()));
   }
 
-  static void goToListaPastos(BuildContext context) {
-    Navigator.push(context, _slideRoute(const ListaPastosScreen()));
+  static Future<void> goToListaPastos(BuildContext context) {
+    return Navigator.push(context, _slideRoute(const ListaPastosScreen()));
   }
 
   static Future<void> goToNovoPasto(
@@ -140,8 +140,8 @@ abstract class AppCoordinator {
     );
   }
 
-  static void goToListaRebanhos(BuildContext context) {
-    Navigator.push(context, _slideRoute(const ListaRebanhoScreen()));
+  static Future<void> goToListaRebanhos(BuildContext context) {
+    return Navigator.push(context, _slideRoute(const ListaRebanhoScreen()));
   }
 
   static Future<void> goToNovoRebanho(

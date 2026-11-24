@@ -523,10 +523,15 @@ class _ModalOpcao extends StatelessWidget {
 // =============================================================================
 
 class _BovDatePicker extends StatelessWidget {
-  const _BovDatePicker({required this.data, required this.onTap});
+  const _BovDatePicker({
+    required this.data,
+    required this.onTap,
+    this.hasError = false,
+  });
 
-  final DateTime data;
+  final DateTime? data;
   final VoidCallback onTap;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +543,9 @@ class _BovDatePicker extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: hasError ? AppColors.red : AppColors.border,
+          ),
         ),
         child: Row(
           children: [
@@ -549,9 +556,11 @@ class _BovDatePicker extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              '${data.day.toString().padLeft(2, '0')}/${data.month.toString().padLeft(2, '0')}/${data.year}',
-              style: const TextStyle(
-                color: AppColors.text,
+              data == null
+                  ? 'Selecionar data'
+                  : '${data!.day.toString().padLeft(2, '0')}/${data!.month.toString().padLeft(2, '0')}/${data!.year}',
+              style: TextStyle(
+                color: data == null ? AppColors.text4 : AppColors.text,
                 fontSize: 14,
                 fontFamily: 'DM Sans',
               ),
@@ -578,7 +587,9 @@ class _RegistrarPesagemScreen extends ConsumerStatefulWidget {
 class _RegistrarPesagemScreenState
     extends ConsumerState<_RegistrarPesagemScreen> {
   final _pesoController = TextEditingController();
-  DateTime _data = DateTime.now();
+  DateTime? _data;
+  bool _erroPeso = false;
+  bool _erroData = false;
 
   @override
   void dispose() {
@@ -589,7 +600,7 @@ class _RegistrarPesagemScreenState
   Future<void> _selecionarData() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _data,
+      initialDate: _data ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       builder: (context, child) => Theme(
@@ -602,7 +613,12 @@ class _RegistrarPesagemScreenState
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _data = picked);
+    if (picked != null) {
+      setState(() {
+        _data = picked;
+        _erroData = false;
+      });
+    }
   }
 
   @override
@@ -708,6 +724,12 @@ class _RegistrarPesagemScreenState
                                       decimal: true,
                                     ),
                                 textInputAction: TextInputAction.done,
+                                errorBorder: _erroPeso,
+                                onChanged: (_) {
+                                  if (_erroPeso) {
+                                    setState(() => _erroPeso = false);
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -722,6 +744,7 @@ class _RegistrarPesagemScreenState
                               _BovDatePicker(
                                 data: _data,
                                 onTap: _selecionarData,
+                                hasError: _erroData,
                               ),
                             ],
                           ),
@@ -735,14 +758,22 @@ class _RegistrarPesagemScreenState
                       label: 'Registrar Pesagem',
                       isLoading: isLoading,
                       onPressed: () {
-                        final novoPeso =
-                            double.tryParse(_pesoController.text) ?? 0.0;
+                        final pesoValor = double.tryParse(_pesoController.text);
+                        final erroPeso = pesoValor == null || pesoValor <= 0;
+                        final erroData = _data == null;
+
+                        setState(() {
+                          _erroPeso = erroPeso;
+                          _erroData = erroData;
+                        });
+                        if (erroPeso || erroData) return;
+
                         ref
                             .read(animaisViewModelProvider.notifier)
                             .registrarHistoricoPesagem(
                               tipo: HistoricoTipo.pesagem,
-                              novoPeso: novoPeso,
-                              data: _data,
+                              novoPeso: pesoValor!,
+                              data: _data!,
                             );
                       },
                     ),
@@ -785,12 +816,14 @@ class _RegistrarMudancaPastoScreen extends ConsumerStatefulWidget {
 class _RegistrarMovimentacaoScreenState
     extends ConsumerState<_RegistrarMudancaPastoScreen> {
   PastoModel? _destino;
-  DateTime _data = DateTime.now();
+  DateTime? _data;
+  bool _erroPasto = false;
+  bool _erroData = false;
 
   Future<void> _selecionarData() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _data,
+      initialDate: _data ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       builder: (context, child) => Theme(
@@ -803,7 +836,12 @@ class _RegistrarMovimentacaoScreenState
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _data = picked);
+    if (picked != null) {
+      setState(() {
+        _data = picked;
+        _erroData = false;
+      });
+    }
   }
 
   @override
@@ -912,14 +950,22 @@ class _RegistrarMovimentacaoScreenState
                       items: destinoOpcoes,
                       itemLabel: (p) => p.nome,
                       hint: 'Selecionar pasto de destino...',
-                      onChanged: (p) => setState(() => _destino = p),
+                      hasError: _erroPasto,
+                      onChanged: (p) => setState(() {
+                        _destino = p;
+                        _erroPasto = false;
+                      }),
                     ),
 
                     const SizedBox(height: 14),
 
                     const BovFieldLabel(label: 'DATA'),
                     const SizedBox(height: 6),
-                    _BovDatePicker(data: _data, onTap: _selecionarData),
+                    _BovDatePicker(
+                      data: _data,
+                      onTap: _selecionarData,
+                      hasError: _erroData,
+                    ),
 
                     if (widget.temRebanho) ...[
                       const SizedBox(height: 14),
@@ -950,9 +996,16 @@ class _RegistrarMovimentacaoScreenState
                     BovPrimaryButton(
                       label: 'Registrar Movimentação',
                       isLoading: isLoading,
-                      onPressed: _destino == null
-                          ? null
-                          : () {
+                      onPressed: () {
+                              final erroPasto = _destino == null;
+                              final erroData = _data == null;
+
+                              setState(() {
+                                _erroPasto = erroPasto;
+                                _erroData = erroData;
+                              });
+                              if (erroPasto || erroData) return;
+
                               ref
                                   .read(animaisViewModelProvider.notifier)
                                   .registrarHistoricoMovimento(
@@ -962,7 +1015,7 @@ class _RegistrarMovimentacaoScreenState
                                               .mudarPastoContinuarSemRebanho,
                                     pastoOrigemId: origem?.id,
                                     pastoDestinoId: _destino!.id,
-                                    data: _data,
+                                    data: _data!,
                                     rebanhoOrigemId:
                                         ultimoRegistro.rebanhoDestinoId,
                                     rebanhoDestinoId: null,
@@ -1017,12 +1070,14 @@ class _RegistrarMudancaRebanhoScreen extends ConsumerStatefulWidget {
 class _RegistrarMudancaRebanhoScreenState
     extends ConsumerState<_RegistrarMudancaRebanhoScreen> {
   RebanhoModel? _rebanhoDestino;
-  DateTime _data = DateTime.now();
+  DateTime? _data;
+  bool _erroRebanho = false;
+  bool _erroData = false;
 
   Future<void> _selecionarData() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _data,
+      initialDate: _data ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       builder: (context, child) => Theme(
@@ -1035,7 +1090,12 @@ class _RegistrarMudancaRebanhoScreenState
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _data = picked);
+    if (picked != null) {
+      setState(() {
+        _data = picked;
+        _erroData = false;
+      });
+    }
   }
 
   @override
@@ -1141,14 +1201,22 @@ class _RegistrarMudancaRebanhoScreenState
                       items: destinoRebanhos,
                       itemLabel: (p) => p.nome,
                       hint: 'Selecionar rebanho de destino...',
-                      onChanged: (p) => setState(() => _rebanhoDestino = p),
+                      hasError: _erroRebanho,
+                      onChanged: (p) => setState(() {
+                        _rebanhoDestino = p;
+                        _erroRebanho = false;
+                      }),
                     ),
 
                     const SizedBox(height: 14),
 
                     const BovFieldLabel(label: 'DATA'),
                     const SizedBox(height: 6),
-                    _BovDatePicker(data: _data, onTap: _selecionarData),
+                    _BovDatePicker(
+                      data: _data,
+                      onTap: _selecionarData,
+                      hasError: _erroData,
+                    ),
 
                     const SizedBox(height: 14),
                     const Row(
@@ -1177,9 +1245,16 @@ class _RegistrarMudancaRebanhoScreenState
                     BovPrimaryButton(
                       label: 'Registrar Movimentação',
                       isLoading: isLoading,
-                      onPressed: _rebanhoDestino == null
-                          ? null
-                          : () {
+                      onPressed: () {
+                              final erroRebanho = _rebanhoDestino == null;
+                              final erroData = _data == null;
+
+                              setState(() {
+                                _erroRebanho = erroRebanho;
+                                _erroData = erroData;
+                              });
+                              if (erroRebanho || erroData) return;
+
                               final nomePastoDestino = widget.pastos
                                   .firstWhere(
                                     (pasto) =>
@@ -1196,7 +1271,7 @@ class _RegistrarMudancaRebanhoScreenState
                                     pastoOrigemId:
                                         ultimoRegistro.pastoDestinoId,
                                     pastoDestinoId: _rebanhoDestino!.pastoId,
-                                    data: _data,
+                                    data: _data!,
                                     rebanhoOrigemId:
                                         ultimoRegistro.rebanhoDestinoId,
                                     rebanhoDestinoId: _rebanhoDestino!.id,
@@ -1238,6 +1313,7 @@ class _BovDropdown<T> extends StatelessWidget {
     required this.hint,
     required this.onChanged,
     this.enabled = true,
+    this.hasError = false,
   });
 
   final T? value;
@@ -1246,6 +1322,7 @@ class _BovDropdown<T> extends StatelessWidget {
   final String hint;
   final ValueChanged<T?> onChanged;
   final bool enabled;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -1255,7 +1332,9 @@ class _BovDropdown<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: enabled ? AppColors.card : AppColors.background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: hasError ? AppColors.red : AppColors.border,
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(

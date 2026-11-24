@@ -1,7 +1,9 @@
+import 'package:bov_manager/core/navigation/app_coordinator.dart';
 import 'package:bov_manager/core/theme/app_colors.dart';
 import 'package:bov_manager/core/widgets/bov_widgets.dart';
 import 'package:bov_manager/models/pasto_model.dart';
 import 'package:bov_manager/viewmodels/pasto_viewmodel.dart';
+import 'package:bov_manager/viewmodels/propriedade_viewmodel.dart';
 import 'package:bov_manager/viewmodels/rebanho_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +19,9 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
   List<PastoModel> _pastos = [];
   PastoModel? _pastoDestino;
   bool _carregandoPastos = true;
-  DateTime _data = DateTime.now();
+  DateTime? _data;
+  bool _erroDestino = false;
+  bool _erroData = false;
 
   @override
   void initState() {
@@ -41,7 +45,7 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
   Future<void> _selecionarData() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _data,
+      initialDate: _data ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       builder: (context, child) => Theme(
@@ -54,7 +58,21 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _data = picked);
+    if (picked != null) {
+      setState(() {
+        _data = picked;
+        _erroData = false;
+      });
+    }
+  }
+
+  Future<void> _criarPasto() async {
+    await AppCoordinator.goToNovoPasto(
+      context,
+      propriedadeId: ref.read(propriedadeEmVisualizacaoProvider)?.id,
+    );
+
+    await _carregarPastos();
   }
 
   String _formatarData(DateTime d) =>
@@ -172,7 +190,7 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
 
                     // ── Linha Origem → Destino ────────────────────────────
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // ORIGEM (readonly)
                         Expanded(
@@ -191,16 +209,28 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                         ),
 
                         // Seta separadora
+                        // (rótulo invisível mantém a seta centrada na altura da
+                        // caixa de 48px, mesmo se o DESTINO ficar mais alto)
                         Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: 12,
-                            left: 10,
-                            right: 10,
-                          ),
-                          child: const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: AppColors.accent,
-                            size: 22,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Column(
+                            children: [
+                              const Opacity(
+                                opacity: 0,
+                                child: BovFieldLabel(label: 'DESTINO'),
+                              ),
+                              const SizedBox(height: 6),
+                              const SizedBox(
+                                height: 48,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: AppColors.accent,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -214,14 +244,20 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                               _carregandoPastos
                                   ? _DropdownSkeleton()
                                   : pastosDestino.isEmpty
-                                  ? _DropdownVazio()
+                                  ? _DropdownVazio(
+                                      erro: _erroDestino,
+                                      onTap: _criarPasto,
+                                    )
                                   : _BovDropdown<PastoModel>(
                                       value: _pastoDestino,
                                       items: pastosDestino,
                                       itemLabel: (p) => p.nome,
                                       hint: 'Selecionar',
-                                      onChanged: (p) =>
-                                          setState(() => _pastoDestino = p),
+                                      erro: _erroDestino,
+                                      onChanged: (p) => setState(() {
+                                        _pastoDestino = p;
+                                        if (p != null) _erroDestino = false;
+                                      }),
                                     ),
                             ],
                           ),
@@ -242,7 +278,9 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.card,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(
+                            color: _erroData ? AppColors.red : AppColors.border,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -254,9 +292,13 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                _formatarData(_data),
-                                style: const TextStyle(
-                                  color: AppColors.text,
+                                _data == null
+                                    ? 'Selecionar data'
+                                    : _formatarData(_data!),
+                                style: TextStyle(
+                                  color: _data == null
+                                      ? AppColors.text4
+                                      : AppColors.text,
                                   fontSize: 14,
                                   fontFamily: 'DM Sans',
                                 ),
@@ -301,20 +343,30 @@ class _MoverRebanhoScreenState extends ConsumerState<MoverRebanhoScreen> {
                     BovPrimaryButton(
                       label: 'Confirmar movimentação',
                       isLoading: isLoading,
-                      onPressed: rebanho == null || _pastoDestino == null
-                          ? null
-                          : () {
-                              ref
-                                  .read(rebanhoViewModelProvider.notifier)
-                                  .mover(
-                                    rebanhoId: rebanho.id,
-                                    antigoPastoId: rebanho.pastoId,
-                                    novoPastoId: _pastoDestino!.id,
-                                    nomePastoOrigem: pastoAtual?.nome,
-                                    nomePastoDestino: _pastoDestino!.nome,
-                                    data: _data,
-                                  );
-                            },
+                      onPressed: () {
+                        final destino = _pastoDestino;
+                        final data = _data;
+
+                        setState(() {
+                          _erroDestino = destino == null;
+                          _erroData = data == null;
+                        });
+
+                        if (rebanho == null || destino == null || data == null) {
+                          return;
+                        }
+
+                        ref
+                            .read(rebanhoViewModelProvider.notifier)
+                            .mover(
+                              rebanhoId: rebanho.id,
+                              antigoPastoId: rebanho.pastoId,
+                              novoPastoId: destino.id,
+                              nomePastoOrigem: pastoAtual?.nome,
+                              nomePastoDestino: destino.nome,
+                              data: data,
+                            );
+                      },
                     ),
 
                     const SizedBox(height: 10),
@@ -380,6 +432,7 @@ class _BovDropdown<T> extends StatelessWidget {
     required this.itemLabel,
     required this.hint,
     required this.onChanged,
+    this.erro = false,
   });
 
   final T? value;
@@ -387,6 +440,7 @@ class _BovDropdown<T> extends StatelessWidget {
   final String Function(T) itemLabel;
   final String hint;
   final ValueChanged<T?> onChanged;
+  final bool erro;
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +450,7 @@ class _BovDropdown<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: erro ? AppColors.red : AppColors.border),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
@@ -466,24 +520,54 @@ class _DropdownSkeleton extends StatelessWidget {
 }
 
 class _DropdownVazio extends StatelessWidget {
+  const _DropdownVazio({required this.onTap, this.erro = false});
+
+  final VoidCallback onTap;
+  final bool erro;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Center(
-        child: Text(
-          'Sem outros pastos',
-          style: TextStyle(
-            color: AppColors.text4,
-            fontSize: 13,
-            fontFamily: 'DM Sans',
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: erro ? AppColors.red : AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sem outros pastos',
+              style: TextStyle(
+                color: AppColors.text4,
+                fontSize: 13,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.accent.withAlpha(102)),
+              ),
+              child: const Text(
+                'Criar pasto',
+                style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

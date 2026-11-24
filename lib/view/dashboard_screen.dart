@@ -661,6 +661,32 @@ class _DashboardContent extends ConsumerWidget {
   final bool isLoadingPastos;
   final bool isLoadingRebanhos;
 
+  /// Abre uma tela de listagem (rebanhos, pastos) a partir do dashboard.
+  ///
+  /// As listagens leem `propriedadeEmVisualizacao`, que só é preenchida na
+  /// tela de propriedade específica. Aqui ela é preenchida com a propriedade
+  /// selecionada antes de navegar e limpa quando a tela é fechada.
+  Future<void> _abrirListagem(
+    WidgetRef ref,
+    Future<void> Function() navegar,
+  ) async {
+    final propriedade = ref.read(propriedadeSelecionadaProvider).value;
+    if (propriedade == null) return;
+
+    final notifier = ref.read(propriedadeEmVisualizacaoProvider.notifier);
+    notifier.abrir(propriedade);
+
+    try {
+      await navegar();
+    } finally {
+      // O Future do push completa no início do pop, mas a listagem continua
+      // montada (e observando a propriedade) durante a animação de saída.
+      // Limpar antes disso faria a tela piscar em loading/vazio.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      notifier.fechar();
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tarefasAsync = ref.watch(tarefasListaProvider);
@@ -754,7 +780,10 @@ class _DashboardContent extends ConsumerWidget {
               value: isLoadingRebanhos ? '—' : totalRebanhos.toString(),
               label: 'Rebanhos',
               iconColor: AppColors.accent,
-              onTap: () => AppCoordinator.goToListaRebanhos(context),
+              onTap: () => _abrirListagem(
+                ref,
+                () => AppCoordinator.goToListaRebanhos(context),
+              ),
             ),
             const SizedBox(width: 10),
             _MetricItem(
@@ -762,7 +791,10 @@ class _DashboardContent extends ConsumerWidget {
               value: isLoadingPastos ? '—' : totalPastos.toString(),
               label: 'Pastos',
               iconColor: AppColors.accent,
-              onTap: () => AppCoordinator.goToListaPastos(context),
+              onTap: () => _abrirListagem(
+                ref,
+                () => AppCoordinator.goToListaPastos(context),
+              ),
             ),
             const SizedBox(width: 10),
             _MetricItem(

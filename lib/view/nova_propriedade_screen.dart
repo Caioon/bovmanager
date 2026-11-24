@@ -14,6 +14,7 @@ class NovaPropriedadeScreen extends ConsumerStatefulWidget {
 
 class _NovaPropriedadeScreenState extends ConsumerState<NovaPropriedadeScreen> {
   final _nomeController = TextEditingController();
+  bool _erroNome = false;
 
   @override
   void dispose() {
@@ -74,6 +75,10 @@ class _NovaPropriedadeScreenState extends ConsumerState<NovaPropriedadeScreen> {
                       controller: _nomeController,
                       hintText: 'Ex: Fazenda Santa Clara',
                       textInputAction: TextInputAction.done,
+                      errorBorder: _erroNome,
+                      onChanged: (_) {
+                        if (_erroNome) setState(() => _erroNome = false);
+                      },
                     ),
 
                     const SizedBox(height: 20),
@@ -82,6 +87,16 @@ class _NovaPropriedadeScreenState extends ConsumerState<NovaPropriedadeScreen> {
                       label: 'Salvar Propriedade',
                       isLoading: isLoading,
                       onPressed: () {
+                        final erroNome = _nomeController.text.trim().isEmpty;
+                        setState(() => _erroNome = erroNome);
+                        if (erroNome) {
+                          showBovErrorSnackBar(
+                            context,
+                            'Informe o nome da propriedade.',
+                          );
+                          return;
+                        }
+
                         ref
                             .read(propriedadesViewModelProvider.notifier)
                             .criar(nome: _nomeController.text);
