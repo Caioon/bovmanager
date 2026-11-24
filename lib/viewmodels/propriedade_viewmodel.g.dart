@@ -207,7 +207,7 @@ final class PropriedadesViewModelProvider
 }
 
 String _$propriedadesViewModelHash() =>
-    r'e38c4e59c71c4c2387bed443dbc590b05a3a203b';
+    r'75383a0f8e8d07f8ed8f7a12d576ef72b997d100';
 
 abstract class _$PropriedadesViewModel extends $Notifier<AsyncValue<void>> {
   AsyncValue<void> build();

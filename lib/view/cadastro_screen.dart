@@ -22,6 +22,7 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
 
   bool _obscureSenha = true;
   bool _obscureConfirmarSenha = true;
+  bool _tentouEnviar = false;
 
   // ── Getters de validação ───────────────────────────────────────────────────
 
@@ -29,13 +30,19 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
 
   bool get _cpfValido => cpfValido(_cpfController.text);
 
-  bool get _emailValido => _emailController.text.trim().isNotEmpty;
+  bool get _emailValido {
+    final email = _emailController.text.trim();
+
+    final regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
+    return regex.hasMatch(email);
+  }
 
   bool get _emailsIguais =>
       _confirmarEmailController.text.trim().isNotEmpty &&
       _emailController.text.trim() == _confirmarEmailController.text.trim();
 
-  bool get _senhaValida => _senhaController.text.length >= 6;
+  bool get _senhaValida => _senhaController.text.length >= 8;
 
   bool get _senhasIguais =>
       _confirmarSenhaController.text.isNotEmpty &&
@@ -50,6 +57,30 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
       _senhasIguais;
 
   void _rebuild() => setState(() {});
+
+  // ── Erros (só aparecem após tentar enviar) ─────────────────────────────────
+
+  bool get _erroNome => _tentouEnviar && !_nomeValido;
+  bool get _erroCpf => _tentouEnviar && !_cpfValido;
+  bool get _erroEmail => _tentouEnviar && !_emailValido;
+  bool get _erroConfirmarEmail => _tentouEnviar && !_emailsIguais;
+  bool get _erroSenha => _tentouEnviar && !_senhaValida;
+  bool get _erroConfirmarSenha => _tentouEnviar && !_senhasIguais;
+
+  void _enviar() {
+    FocusScope.of(context).unfocus();
+    setState(() => _tentouEnviar = true);
+    if (!_formValido) return;
+
+    ref
+        .read(usuarioViewModelProvider.notifier)
+        .criarUsuario(
+          nome: _nomeController.text.trim(),
+          email: _emailController.text.trim(),
+          cpf: _cpfController.text.replaceAll(RegExp(r'\D'), ''),
+          senha: _senhaController.text,
+        );
+  }
 
   @override
   void initState() {
@@ -90,9 +121,6 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
   // Campo de CPF com formatter — usa TextField puro pois BovTextField
   // não expõe inputFormatters. Estilizado para combinar com BovTextField.
   Widget _campoCpf() {
-    final digitados = _cpfController.text.replaceAll(RegExp(r'\D'), '').length;
-    final mostraErro = digitados > 0 && digitados < 11;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -117,18 +145,21 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: mostraErro ? AppColors.red : AppColors.border,
+                color: _erroCpf ? AppColors.red : AppColors.border,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: mostraErro ? AppColors.red : AppColors.accent,
+                color: _erroCpf ? AppColors.red : AppColors.accent,
               ),
             ),
           ),
         ),
-        if (mostraErro) _erroTexto('CPF inválido — insira 11 dígitos'),
+        if (_erroCpf)
+          _erroTexto(
+            _cpfController.text.isEmpty ? 'Informe o CPF' : 'CPF inválido',
+          ),
       ],
     );
   }
@@ -148,9 +179,6 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
         },
       );
     });
-
-    final confirmarEmailDigitado = _confirmarEmailController.text.isNotEmpty;
-    final confirmarSenhaDigitada = _confirmarSenhaController.text.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -207,7 +235,9 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                       hintText: 'João da Silva',
                       keyboardType: TextInputType.name,
                       textInputAction: TextInputAction.next,
+                      errorBorder: _erroNome,
                     ),
+                    if (_erroNome) _erroTexto('Informe seu nome'),
 
                     const SizedBox(height: 14),
 
@@ -226,8 +256,14 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                       hintText: 'seu@email.com',
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
+                      errorBorder: _erroEmail,
                     ),
-
+                    if (_erroEmail)
+                      _erroTexto(
+                        _emailController.text.trim().isEmpty
+                            ? 'Informe seu e-mail'
+                            : 'Email não é válido',
+                      ),
                     const SizedBox(height: 14),
 
                     // ── Confirmar E-mail ───────────────────────────────────
@@ -238,12 +274,14 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                       hintText: 'Repita o e-mail',
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      // Borda vermelha quando os emails não batem
-                      errorBorder: confirmarEmailDigitado && !_emailsIguais,
+                      errorBorder: _erroConfirmarEmail,
                     ),
-                    if (confirmarEmailDigitado && !_emailsIguais)
-                      _erroTexto('Os e-mails não correspondem'),
-
+                    if (_erroConfirmarEmail)
+                      _erroTexto(
+                        _confirmarEmailController.text.isEmpty
+                            ? 'Confirme seu e-mail'
+                            : 'Os e-mails não correspondem',
+                      ),
                     const SizedBox(height: 14),
 
                     // ── Senha ─────────────────────────────────────────────
@@ -251,9 +289,10 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                     const SizedBox(height: 6),
                     BovTextField(
                       controller: _senhaController,
-                      hintText: 'Mínimo 6 caracteres',
+                      hintText: 'Mínimo 8 caracteres',
                       obscureText: _obscureSenha,
                       textInputAction: TextInputAction.next,
+                      errorBorder: _erroSenha,
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureSenha
@@ -267,9 +306,8 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                       ),
                     ),
 
-                    if (_senhaController.text.isNotEmpty && !_senhaValida)
-                      _erroTexto('A senha deve ter pelo menos 6 caracteres'),
-
+                    if (_erroSenha)
+                      _erroTexto('A senha deve ter pelo menos 8 caracteres'),
                     const SizedBox(height: 14),
 
                     // ── Confirmar Senha ───────────────────────────────────
@@ -280,7 +318,7 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                       hintText: 'Repita a senha',
                       obscureText: _obscureConfirmarSenha,
                       textInputAction: TextInputAction.done,
-                      errorBorder: confirmarSenhaDigitada && !_senhasIguais,
+                      errorBorder: _erroConfirmarSenha,
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirmarSenha
@@ -295,8 +333,12 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                         ),
                       ),
                     ),
-                    if (confirmarSenhaDigitada && !_senhasIguais)
-                      _erroTexto('As senhas não correspondem'),
+                    if (_erroConfirmarSenha)
+                      _erroTexto(
+                        _confirmarSenhaController.text.isEmpty
+                            ? 'Confirme sua senha'
+                            : 'As senhas não correspondem',
+                      ),
 
                     const SizedBox(height: 20),
 
@@ -304,24 +346,8 @@ class _CadastroScreenState extends ConsumerState<CadastroScreen> {
                     BovPrimaryButton(
                       label: 'Criar Conta',
                       isLoading: isLoading,
-                      // null desabilita o botão quando o form não está válido
-                      onPressed: (!_formValido || isLoading)
-                          ? null
-                          : () {
-                              ref
-                                  .read(usuarioViewModelProvider.notifier)
-                                  .criarUsuario(
-                                    nome: _nomeController.text.trim(),
-                                    email: _emailController.text.trim(),
-                                    cpf: _cpfController.text.replaceAll(
-                                      RegExp(r'\D'),
-                                      '',
-                                    ),
-                                    senha: _senhaController.text,
-                                  );
-                            },
+                      onPressed: isLoading ? null : _enviar,
                     ),
-
                     const SizedBox(height: 20),
 
                     // ── Link para Login ────────────────────────────────────

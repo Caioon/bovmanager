@@ -19,6 +19,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // Estado local de visibilidade da senha — puramente UI
   bool _obscureSenha = true;
 
+  // Novo email (troca confirmada): exibe aviso e preenche o campo de email
+  String? _emailAlterado;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarEmailAlterado();
+  }
+
+  Future<void> _carregarEmailAlterado() async {
+    final email = await ref
+        .read(usuarioViewModelProvider.notifier)
+        .obterEmailPendente();
+    if (!mounted || email == null) return;
+    setState(() {
+      _emailAlterado = email;
+      _emailController.text = email;
+    });
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -72,6 +92,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   fontFamily: 'DM Sans',
                 ),
               ),
+
+              if (_emailAlterado != null) ...[
+                const SizedBox(height: 20),
+                _AvisoEmailAlterado(email: _emailAlterado!),
+              ],
 
               const SizedBox(height: 28),
 
@@ -158,6 +183,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// AVISO: EMAIL ALTERADO
+// =============================================================================
+
+class _AvisoEmailAlterado extends StatelessWidget {
+  const _AvisoEmailAlterado({required this.email});
+
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.accentBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accent),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.mark_email_read_outlined,
+            color: AppColors.accent,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 14,
+                  fontFamily: 'DM Sans',
+                ),
+                children: [
+                  const TextSpan(text: 'Seu email foi alterado para '),
+                  TextSpan(
+                    text: email,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const TextSpan(
+                    text: '. Por segurança, entre novamente com o novo email.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

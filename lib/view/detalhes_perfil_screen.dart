@@ -8,11 +8,43 @@ import 'package:bov_manager/viewmodels/usuario_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DetalhesPerfilScreen extends ConsumerWidget {
+class DetalhesPerfilScreen extends ConsumerStatefulWidget {
   const DetalhesPerfilScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DetalhesPerfilScreen> createState() =>
+      _DetalhesPerfilScreenState();
+}
+
+class _DetalhesPerfilScreenState extends ConsumerState<DetalhesPerfilScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Ao abrir a tela, sincroniza com o servidor (ex.: email já confirmado)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _recarregar());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Usuário confirmou o link no navegador e voltou ao app
+    if (state == AppLifecycleState.resumed) _recarregar();
+  }
+
+  void _recarregar() {
+    if (!mounted) return;
+    ref.read(usuarioViewModelProvider.notifier).recarregarUsuario();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final usuarioAsync = ref.watch(usuarioAtualProvider);
     final notificacoesAsync = ref.watch(notificacaoViewModelProvider);
 

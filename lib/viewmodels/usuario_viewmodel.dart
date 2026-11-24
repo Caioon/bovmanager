@@ -79,6 +79,24 @@ class UsuarioViewModel extends _$UsuarioViewModel {
   }
 
   // =========================
+  // EMAIL PENDENTE
+  // Não altera o state — usado pela tela de login para exibir o aviso de
+  // "email alterado" e preencher o campo automaticamente.
+  // =========================
+  Future<String?> obterEmailPendente() {
+    return ref.read(usuarioServiceProvider).obterEmailPendente();
+  }
+
+  // =========================
+  // RECARREGAR USUÁRIO
+  // Não altera o state — o stream usuarioAtualProvider reage sozinho
+  // quando o Firebase Auth emitir o usuário atualizado.
+  // =========================
+  Future<void> recarregarUsuario() async {
+    await ref.read(usuarioServiceProvider).recarregarUsuario();
+  }
+
+  // =========================
   // ATUALIZAR NOME
   // =========================
   Future<void> atualizarNome(String novoNome) async {

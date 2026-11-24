@@ -4,6 +4,7 @@ import 'package:bov_manager/models/usuario_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 part 'usuario_repository.g.dart';
 
@@ -17,6 +18,11 @@ Stream<UsuarioModel?> usuarioAtual(Ref ref) {
 UsuarioRepository usuarioRepository(Ref ref) {
   return UsuarioRepository();
 }
+
+/// Chave local com o novo email solicitado (aguardando confirmação do link).
+/// Usada para avisar e preencher o login caso a sessão seja encerrada após a
+/// confirmação, já que o Firebase não informa o email pendente.
+const _kEmailPendente = 'email_pendente';
 
 class UsuarioRepository {
   final FirebaseFirestore _firestore;
@@ -54,19 +60,31 @@ class UsuarioRepository {
   // =========================
   Future<void> login({required String email, required String senha}) async {
     await _auth.signInWithEmailAndPassword(email: email, password: senha);
+
+    // Login com o email que estava pendente: a troca foi concluída
+    final pendente = await obterEmailPendente();
+    if (pendente != null &&
+        pendente.toLowerCase() == email.trim().toLowerCase()) {
+      await _limparEmailPendente();
+    }
   }
 
   // =========================
   // LOGOUT
   // =========================
   Future<void> logout() async {
+    // Logout manual: descarta o email pendente para que o login não exiba o
+    // aviso de "email alterado" (que só faz sentido em logout forçado).
+    await _limparEmailPendente();
     await _auth.signOut();
   }
 
   // =========================
   // STREAM EM TEMPO REAL (switchMap manual)
   //
-  // authStateChanges emite sempre que o estado de auth muda (login/logout).
+  // userChanges emite no login/logout E sempre que o usuário do Firebase muda
+  // (email, token, reload()). Diferente de authStateChanges, que só emite em
+  // login/logout e por isso não detectava a troca de email.
   // Para cada usuário logado, abrimos um listener no documento do Firestore
   // (.snapshots()), que reage em tempo real a qualquer alteração de campos.
   //
@@ -86,7 +104,7 @@ class UsuarioRepository {
 
     controller = StreamController<UsuarioModel?>(
       onListen: () {
-        authSub = _auth.authStateChanges().listen((firebaseUser) async {
+        authSub = _auth.userChanges().listen((firebaseUser) async {
           // Cancela o listener do Firestore do usuário anterior
           await firestoreSub?.cancel();
           firestoreSub = null;
@@ -106,8 +124,10 @@ class UsuarioRepository {
                 final usuario = UsuarioModel.fromMap(doc.data()!, doc.id);
 
                 // Sincroniza email do Auth → Firestore após o usuário
-                // confirmar o link de troca de email
-                final emailAuth = firebaseUser.email;
+                // confirmar o link de troca de email.
+                // Usa o currentUser (sempre atual), não o firebaseUser
+                // capturado no closure, que pode estar desatualizado.
+                final emailAuth = _auth.currentUser?.email;
                 if (emailAuth != null && emailAuth != usuario.email) {
                   await _firestore
                       .collection('usuarios')
@@ -128,6 +148,43 @@ class UsuarioRepository {
     );
 
     return controller.stream;
+  }
+
+  // =========================
+  // RECARREGAR USUÁRIO
+  //
+  // Busca o estado atual no servidor. Se o email mudou (link confirmado fora
+  // do app), o userChanges() emite e a UI atualiza. Se o token foi revogado,
+  // faz signOut e o AuthGate redireciona para o login.
+  // =========================
+  Future<void> recarregarUsuario() async {
+    try {
+      await _auth.currentUser?.reload();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-token-expired' || e.code == 'user-not-found') {
+        await _auth.signOut();
+      }
+      // Demais erros (ex.: network-request-failed, sem internet) são
+      // ignorados: tentaremos de novo na próxima abertura/retomada do app.
+    }
+  }
+
+  // =========================
+  // EMAIL PENDENTE (armazenamento local)
+  // =========================
+  Future<void> _salvarEmailPendente(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kEmailPendente, email);
+  }
+
+  Future<void> _limparEmailPendente() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kEmailPendente);
+  }
+
+  Future<String?> obterEmailPendente() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kEmailPendente);
   }
 
   // ignore: unused_element
@@ -197,6 +254,7 @@ class UsuarioRepository {
       );
       await user.reauthenticateWithCredential(credential);
       await user.verifyBeforeUpdateEmail(novoEmail);
+      await _salvarEmailPendente(novoEmail);
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'email-already-in-use':

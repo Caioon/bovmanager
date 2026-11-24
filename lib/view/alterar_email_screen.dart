@@ -40,23 +40,34 @@ class _AlterarEmailScreenState extends ConsumerState<AlterarEmailScreen> {
           .atualizarEmail(widget.senhaAtual, novoEmail);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Link enviado para $novoEmail. Confirme para concluir a troca.',
-              style: const TextStyle(color: AppColors.text, fontFamily: 'DM Sans'),
-            ),
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
             backgroundColor: AppColors.card,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppColors.border),
+            title: const Text(
+              'Link de confirmação enviado',
+              style: TextStyle(color: AppColors.text),
             ),
-            margin: const EdgeInsets.all(16),
+            content: Text(
+              'Enviamos um link de confirmação para $novoEmail.\n\n'
+              'Seu email só será alterado depois que você clicar nele. '
+              'Depois disso, será necessário fazer login novamente com o novo email.',
+              style: const TextStyle(color: AppColors.text2, fontSize: 14),
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.onAccent,
+                ),
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Entendi'),
+              ),
+            ],
           ),
         );
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -187,8 +198,9 @@ class _AlterarEmailScreenState extends ConsumerState<AlterarEmailScreen> {
                           Expanded(
                             child: Text(
                               'Um link de confirmação será enviado para o novo email. '
-                              'Clique nele para concluir a troca. '
-                              'Após confirmar, use o novo email para entrar no app.',
+                              'Seu email só mudará depois que você clicar nele. '
+                              'Depois disso, será necessário entrar novamente no app '
+                              'com o novo email.',
                               style: TextStyle(
                                 color: AppColors.text4,
                                 fontSize: 13,

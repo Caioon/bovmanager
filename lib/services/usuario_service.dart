@@ -51,6 +51,20 @@ class UsuarioService {
   }
 
   // =========================
+  // EMAIL PENDENTE
+  // =========================
+  Future<String?> obterEmailPendente() async {
+    return await _repository.obterEmailPendente();
+  }
+
+  // =========================
+  // RECARREGAR USUÁRIO
+  // =========================
+  Future<void> recarregarUsuario() async {
+    await _repository.recarregarUsuario();
+  }
+
+  // =========================
   // ATUALIZAR NOME
   // =========================
   Future<void> atualizarNome(String novoNome) async {
